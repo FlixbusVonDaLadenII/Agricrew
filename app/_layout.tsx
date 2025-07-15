@@ -1,29 +1,61 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
+// app/_layout.tsx
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { getThemeColors } from '@/theme/colors';
+import { Session } from '@supabase/supabase-js';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+const currentTheme = 'dark';
+const themeColors = getThemeColors(currentTheme);
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+    const [session, setSession] = useState<Session | null>(null);
+    const [initializing, setInitializing] = useState(true);
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+    // 1️⃣  Einmalig aktuelle Session holen
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setInitializing(false);
+        });
 
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
+        // 2️⃣  Auf spätere Auth‑Änderungen hören
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (_event, session) => setSession(session)
+        );
+
+        return () => subscription?.unsubscribe();
+    }, []);
+
+    // Splash / Lade‑Bildschirm
+    if (initializing) {
+        return (
+            <View style={styles.loading}>
+                <ActivityIndicator size="large" color={themeColors.primary} />
+            </View>
+        );
+    }
+
+    // 3️⃣  Stack dynamisch zusammenstellen
+    return (
+        <Stack screenOptions={{ headerShown: false }}>
+            {session ? (
+                // Angemeldet → Haupt‑Tabs
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            ) : (
+                // Nicht angemeldet → Auth‑Gruppe
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            )}
+        </Stack>
+    );
 }
+
+const styles = StyleSheet.create({
+    loading: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: themeColors.background ?? '#000', // Fallback zu Schwarz
+    },
+});
