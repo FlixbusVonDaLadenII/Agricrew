@@ -1,7 +1,13 @@
 // app/_layout.tsx
+
+// Polyfill for structuredClone if not available
+if (typeof globalThis.structuredClone !== 'function') {
+    globalThis.structuredClone = (obj: any) => JSON.parse(JSON.stringify(obj));
+}
+
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { getThemeColors } from '@/theme/colors';
 import { Session } from '@supabase/supabase-js';
@@ -13,22 +19,24 @@ export default function RootLayout() {
     const [session, setSession] = useState<Session | null>(null);
     const [initializing, setInitializing] = useState(true);
 
-    // 1️⃣  Einmalig aktuelle Session holen
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setInitializing(false);
-        });
+        supabase.auth.getSession()
+            .then(({ data: { session } }) => {
+                setSession(session);
+                setInitializing(false);
+            })
+            .catch(error => {
+                console.error('Error fetching initial Supabase session:', error);
+                setInitializing(false);
+            });
 
-        // 2️⃣  Auf spätere Auth‑Änderungen hören
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (_event, session) => setSession(session)
-        );
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+        });
 
         return () => subscription?.unsubscribe();
     }, []);
 
-    // Splash / Lade‑Bildschirm
     if (initializing) {
         return (
             <View style={styles.loading}>
@@ -37,14 +45,11 @@ export default function RootLayout() {
         );
     }
 
-    // 3️⃣  Stack dynamisch zusammenstellen
     return (
         <Stack screenOptions={{ headerShown: false }}>
             {session ? (
-                // Angemeldet → Haupt‑Tabs
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             ) : (
-                // Nicht angemeldet → Auth‑Gruppe
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             )}
         </Stack>
@@ -56,6 +61,6 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: themeColors.background ?? '#000', // Fallback zu Schwarz
+        backgroundColor: themeColors.background ?? '#000',
     },
 });

@@ -12,11 +12,13 @@ import {
     KeyboardAvoidingView,
     TouchableWithoutFeedback,
     Keyboard,
-    ScrollView, // Use ScrollView for content that might exceed screen height
+    ScrollView,
+    Alert, // <-- Added Alert for user feedback
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient'; // For subtle gradients
-import { getThemeColors, Theme } from '@/theme/colors'; // Adjust path if necessary
-import { router } from 'expo-router'; // For navigation
+import { LinearGradient } from 'expo-linear-gradient';
+import { getThemeColors, Theme } from '@/theme/colors';
+import { router } from 'expo-router';
+import { supabase } from '@/lib/supabase'; // <-- Ensure this import is correct
 
 // Assuming 'dark' mode for this example, will eventually come from context
 const currentTheme: Theme = 'dark';
@@ -36,28 +38,60 @@ const LoginScreen = () => {
     const [error, setError] = useState<string | null>(null);
 
     const handleLogin = async () => {
-        setError(null);
-        setLoading(true);
-        // Placeholder for actual login logic with Supabase
+        setError(null); // Clear any previous errors
+        setLoading(true); // Start loading indicator
+
+        // Basic client-side validation
+        if (!email || !password) {
+            setError('Please enter both your email and password.');
+            setLoading(false);
+            return;
+        }
+
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            if (email === 'test@example.com' && password === 'password123') {
-                console.log('Login successful!');
-                router.replace('/(tabs)'); // Navigate to main app
+            // Use Supabase's signInWithPassword method
+            const { data, error: signInError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (signInError) {
+                // Supabase will return specific error messages (e.g., "Invalid login credentials")
+                setError(signInError.message);
+                console.error('Supabase Login Error:', signInError.message);
+
+                // Provide a more user-friendly alert based on common errors
+                if (signInError.message.includes('Email not confirmed')) {
+                    Alert.alert('Login Failed', 'Please check your email to confirm your account.');
+                } else if (signInError.message.includes('Invalid login credentials')) {
+                    Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
+                } else {
+                    Alert.alert('Login Failed', signInError.message);
+                }
+            } else if (data.user) {
+                // Login successful. The user object will be present.
+                console.log('Login successful for user:', data.user.email);
+                Alert.alert('Success', 'You are now logged in!');
+                router.replace('/(tabs)'); // Navigate to the main authenticated part of your app
             } else {
-                setError('Invalid email or password.');
+                // This case should theoretically not be hit if there's no error and no user.
+                // It's a fallback for unexpected API responses.
+                setError('An unexpected error occurred during login. No user data received.');
+                console.warn('Login returned no user and no explicit error.');
             }
         } catch (err: any) {
+            // Catch any unexpected network issues or other general errors
             setError(err.message || 'An unexpected error occurred.');
+            console.error('General login error:', err);
+            Alert.alert('Error', err.message || 'An unexpected error occurred.');
         } finally {
-            setLoading(false);
+            setLoading(false); // Stop loading indicator regardless of outcome
         }
     };
 
     return (
         <LinearGradient
-            colors={[themeColors.background, themeColors.surface]} // Subtle gradient for the background
+            colors={[themeColors.background, themeColors.surface]}
             style={styles.gradientBackground}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -69,7 +103,7 @@ const LoginScreen = () => {
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <ScrollView
                         contentContainerStyle={styles.scrollContent}
-                        keyboardShouldPersistTaps="handled" // Important for inputs within ScrollView
+                        keyboardShouldPersistTaps="handled"
                     >
                         <SafeAreaView style={styles.innerContainer}>
                             <View style={styles.headerContainer}>
@@ -107,6 +141,7 @@ const LoginScreen = () => {
                                     />
                                 </View>
 
+                                {/* You might want to implement Forgot Password functionality later */}
                                 <TouchableOpacity style={styles.forgotPasswordButton}>
                                     <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                                 </TouchableOpacity>
@@ -146,14 +181,14 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        flexGrow: 1, // Allows content to grow within ScrollView
+        flexGrow: 1,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 24,
-        paddingVertical: 40, // Add some vertical padding for smaller screens
+        paddingVertical: 40,
     },
     innerContainer: {
-        width: '100%', // Take full width within scrollContent's padding
+        width: '100%',
         alignItems: 'center',
     },
     headerContainer: {
@@ -162,7 +197,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontFamily: baseFontFamily,
-        fontSize: 36, // Slightly larger title
+        fontSize: 36,
         fontWeight: 'bold',
         color: themeColors.text,
         marginBottom: 8,
@@ -172,7 +207,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: themeColors.textSecondary,
         textAlign: 'center',
-        lineHeight: 24, // Improve readability
+        lineHeight: 24,
     },
     errorText: {
         fontFamily: baseFontFamily,
@@ -180,7 +215,7 @@ const styles = StyleSheet.create({
         color: themeColors.danger,
         marginBottom: 20,
         textAlign: 'center',
-        backgroundColor: 'rgba(220, 53, 69, 0.1)', // Subtle error background
+        backgroundColor: 'rgba(220, 53, 69, 0.1)',
         paddingVertical: 8,
         paddingHorizontal: 15,
         borderRadius: 8,
@@ -188,14 +223,14 @@ const styles = StyleSheet.create({
     },
     formContainer: {
         width: '100%',
-        backgroundColor: themeColors.surface, // Main form background (layered)
+        backgroundColor: themeColors.surface,
         borderRadius: 16,
         padding: 24,
-        shadowColor: themeColors.border, // Subtle shadow for depth
+        shadowColor: themeColors.border,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
-        elevation: 5, // Android shadow
+        elevation: 5,
     },
     inputGroup: {
         width: '100%',
@@ -206,19 +241,19 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: themeColors.textSecondary,
         marginBottom: 8,
-        fontWeight: '500', // Slightly bolder label
+        fontWeight: '500',
     },
     input: {
         fontFamily: baseFontFamily,
         width: '100%',
         padding: 16,
-        borderRadius: 10, // Slightly rounded inputs
-        backgroundColor: themeColors.surfaceHighlight, // Input background (another layer/highlight)
+        borderRadius: 10,
+        backgroundColor: themeColors.surfaceHighlight,
         color: themeColors.text,
         fontSize: 16,
-        borderWidth: StyleSheet.hairlineWidth, // Very thin border
+        borderWidth: StyleSheet.hairlineWidth,
         borderColor: themeColors.border,
-        paddingHorizontal: 15, // Consistent padding
+        paddingHorizontal: 15,
     },
     loginButton: {
         width: '100%',
@@ -227,29 +262,27 @@ const styles = StyleSheet.create({
         backgroundColor: themeColors.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 25, // More space above button
+        marginTop: 25,
         marginBottom: 10,
     },
     loginButtonText: {
         fontFamily: baseFontFamily,
-        color: themeColors.background, // Text on primary button should be inverse for contrast
+        color: themeColors.background,
         fontSize: 18,
         fontWeight: 'bold',
     },
     forgotPasswordButton: {
-        alignSelf: 'flex-end', // Align to right
+        alignSelf: 'flex-end',
     },
     forgotPasswordText: {
         fontFamily: baseFontFamily,
-        color: themeColors.primaryDark, // Use primaryDark for a subtle link
+        color: themeColors.primaryDark,
         fontSize: 14,
         fontWeight: '600',
     },
     signUpContainer: {
         flexDirection: 'row',
         marginTop: 40,
-        // position: 'absolute', // Removed absolute positioning, rely on flexGrow for bottom alignment
-        // bottom: 40,
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
