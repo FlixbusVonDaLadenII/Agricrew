@@ -1,42 +1,42 @@
 {
   "expo": {
-    "name": "Agricrew",
-    "slug": "Agricrew",
+    "name": "AgriCrew",
+    "slug": "agricrew",
+    "jsEngine": "hermes",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "agricrew",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.agricrewapp.agricrew",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "AgriCrew needs access to your photo library to allow you to select and upload your profile picture and other relevant images.",
+        "NSCameraUsageDescription": "AgriCrew needs camera access to take new photos for your profile, job listings, or chat.",
+        "NSUserNotificationsUsageDescription": "AgriCrew would like to send you notifications for new job offers, application updates, and chat messages to keep you informed.",
+        "NSLocationWhenInUseUsageDescription": "AgriCrew needs your location to show you relevant jobs or workers nearby.",
+        "NSMicrophoneUsageDescription": "AgriCrew needs microphone access to record and send voice messages in chat.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "package": "com.agricrewapp.agricrew"
     },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+    "extra": {
+      "eas": {
+        "projectId": "41096993-00de-4595-960d-c5e6fe1c40f8"
+      }
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+      "expo-router"
+    ]
   }
 }

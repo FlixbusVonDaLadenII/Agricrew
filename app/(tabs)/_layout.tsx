@@ -1,51 +1,62 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Platform } from 'react-native'; // <-- Add this import
-import { getThemeColors, Theme } from '@/theme/colors';
+// app/(tabs)/_layout.tsx
 
-const currentTheme: Theme = 'dark'; // Or dynamically get your theme
-const themeColors = getThemeColors(currentTheme);
+import { Tabs } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { getThemeColors } from '@/theme/colors';
+
+const themeColors = getThemeColors('dark');
 
 export default function TabLayout() {
     return (
         <Tabs
             screenOptions={{
                 tabBarActiveTintColor: themeColors.primary,
-                tabBarInactiveTintColor: themeColors.textSecondary,
                 tabBarStyle: {
                     backgroundColor: themeColors.surface,
-                    borderTopWidth: 1,
                     borderTopColor: themeColors.border,
-                    height: Platform.OS === 'ios' ? 90 : 60, // Adjust height for iOS notch
-                    paddingBottom: Platform.OS === 'ios' ? 30 : 0, // Padding for iOS safe area
                 },
-                headerShown: false, // Hide the default header for tab screens, as each screen will manage its own
+                headerShown: false,
             }}
         >
             <Tabs.Screen
                 name="index"
                 options={{
                     title: 'Jobs',
-                    tabBarIcon: ({ color }) => <MaterialCommunityIcons name="briefcase" size={28} color={color} />,
+                    tabBarIcon: ({ color, size }) => (
+                        <MaterialCommunityIcons name="briefcase-outline" color={color} size={size} />
+                    ),
                 }}
             />
-            {/* Assuming 'add-job' is a screen you have or plan to add */}
+
+            <Tabs.Screen
+                name="chats"
+                options={{
+                    title: 'Chats',
+                    tabBarIcon: ({ color, size }) => (
+                        <MaterialCommunityIcons name="message-text-outline" color={color} size={size} />
+                    ),
+                }}
+            />
+
             <Tabs.Screen
                 name="add-job"
                 options={{
                     title: 'Add Job',
-                    tabBarIcon: ({ color }) => <MaterialCommunityIcons name="plus-box" size={28} color={color} />,
+                    tabBarIcon: ({ color, size }) => (
+                        <MaterialCommunityIcons name="plus-box-outline" color={color} size={size} />
+                    ),
                 }}
             />
+
             <Tabs.Screen
-                name="settings" // This must match the filename: profile.tsx
+                name="settings"
                 options={{
                     title: 'Profile',
-                    tabBarIcon: ({ color }) => <MaterialCommunityIcons name="account" size={28} color={color} />,
+                    tabBarIcon: ({ color, size }) => (
+                        <MaterialCommunityIcons name="account-outline" color={color} size={size} />
+                    ),
                 }}
             />
-            {/* Add other tab screens here as needed */}
         </Tabs>
     );
 }

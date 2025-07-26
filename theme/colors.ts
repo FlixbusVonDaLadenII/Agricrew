@@ -2,56 +2,59 @@ export type Theme = 'light' | 'dark';
 
 interface ColorPalette {
     background: string;
-    surface: string; // For cards, input fields, raised elements
-    surfaceHighlight: string; // For slightly elevated elements, or focused states
+    surface: string;
+    surfaceHighlight: string;
     text: string;
     textSecondary: string;
-    textHint: string; // For placeholders
-    primary: string; // Main interactive color (buttons, links, active states)
-    primaryLight: string; // Lighter version for subtle effects or gradients
-    primaryDark: string; // Darker version for accents or hover
-    secondary: string; // Complementary accent color (e.g., for icons, secondary buttons)
-    border: string; // Subtle borders
-    separator: string; // Dividers
+    textHint: string;
+    primary: string;
+    primaryLight: string;
+    primaryDark: string;
+    secondary: string;
+    border: string;
+    separator: string;
     success: string;
     warning: string;
     danger: string;
+    shadow: string;
 }
 
 const lightColors: ColorPalette = {
-    background: '#F0F2F5', // Light grey-blue for main background
-    surface: '#FFFFFF',    // Pure white for cards, sections
-    surfaceHighlight: '#E6ECF2', // Very light grey-blue for highlights/focus
-    text: '#2C3E50',       // Dark blue-grey for primary text
-    textSecondary: '#7F8C8D', // Muted grey for secondary text
-    textHint: '#BDC3C7',   // Light grey for placeholders
-    primary: '#2ECC71',    // Vibrant Green (fresh, growth)
-    primaryLight: '#58D68D', // Lighter green for gradients
-    primaryDark: '#28B463', // Darker green for depth
-    secondary: '#3498DB',  // Sky Blue (complementary, clean)
-    border: '#D5DBDB',     // Light grey border
-    separator: '#EBEBEB',  // Lighter separator
+    background: '#F0F2F5',
+    surface: '#FFFFFF',
+    surfaceHighlight: '#E6ECF2',
+    text: '#2C3E50',
+    textSecondary: '#7F8C8D',
+    textHint: '#BDC3C7',
+    primary: '#4CAF50',         // Changed from blue to green
+    primaryLight: '#81C784',   // Changed to a lighter green
+    primaryDark: '#388E3C',      // Changed to a darker green
+    secondary: '#26A69A',      // Changed from blue to a teal/green
+    border: '#D5DBDB',
+    separator: '#EBEBEB',
     success: '#28A745',
     warning: '#FFC107',
     danger: '#DC3545',
+    shadow: 'rgba(0, 0, 0, 0.1)',
 };
 
 const darkColors: ColorPalette = {
-    background: '#1A202C', // Deep dark blue-grey
-    surface: '#2D3748',    // Darker blue-grey for cards, sections
-    surfaceHighlight: '#4A5568', // Slightly lighter dark grey for highlights/focus
-    text: '#EDF2F7',       // Off-white for primary text
-    textSecondary: '#A0AEC0', // Lighter grey for secondary text
-    textHint: '#6B7A8B',   // Darker grey for placeholders
-    primary: '#2ECC71',    // Vibrant Green (same primary for consistency)
-    primaryLight: '#58D68D', // Lighter green for gradients
-    primaryDark: '#28B463', // Darker green for depth
-    secondary: '#3498DB',  // Sky Blue (same secondary for consistency)
-    border: '#4A5568',     // Dark grey border
-    separator: '#3A4459',  // Darker separator
-    success: '#28A745',
-    warning: '#FFC107',
-    danger: '#DC3545',
+    background: '#141414',
+    surface: '#2C2C2E',
+    surfaceHighlight: '#48484A',
+    text: '#F2F2F7',
+    textSecondary: '#A9A9AE',
+    textHint: '#6B6B6D',
+    primary: '#32D74B',         // Changed from blue to a vibrant green
+    primaryLight: '#5EE371',   // Changed to a lighter green
+    primaryDark: '#28A745',      // Changed to a darker green
+    secondary: '#FF453A',       // Unchanged (was not blue)
+    border: '#444446',
+    separator: '#3A3A3C',
+    success: '#30D158',
+    warning: '#FFD60A',
+    danger: '#FF453A',
+    shadow: 'rgba(0, 0, 0, 0.4)',
 };
 
 export const colors = {

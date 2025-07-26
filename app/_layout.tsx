@@ -1,10 +1,10 @@
 // app/_layout.tsx
 
-// Polyfill for structuredClone if not available
 if (typeof globalThis.structuredClone !== 'function') {
     globalThis.structuredClone = (obj: any) => JSON.parse(JSON.stringify(obj));
 }
 
+import '../i18n';
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
