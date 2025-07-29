@@ -7,12 +7,18 @@
     "yes": "Ja",
     "no": "Nein",
     "addPhoto": "Foto hinzufügen",
+    "language": "Sprache",
+    "delete": "Löschen",
     "separateWithCommas": "Mit Kommas trennen"
   },
   "roles": {
     "Arbeitnehmer": "Arbeitnehmer",
     "Betrieb": "Betrieb / Unternehmen",
     "Rechnungsschreiber": "Buchhaltung"
+  },
+  "chatList": {
+    "emptyTitle": "Keine Chats gefunden",
+    "emptySubtitle": "Clicke jetzt bewerben um Chats zu starten"
   },
   "profile": {
     "myProfile": "Mein Profil",
@@ -51,7 +57,30 @@
     "reminderTitle": "Mehr Bewerber anziehen!",
     "reminderText": "Profile mit vollständiger Beschreibung, Adresse und Betriebsdetails erhalten deutlich mehr hochwertige Bewerbungen. Nimm dir einen Moment Zeit, um dein Inserat zu verbessern.",
     "remindMeLater": "Später erinnern",
-    "illDoIt": "Okay, mache ich"
+    "illDoIt": "Okay, mache ich",
+    "jobManagement": "Stellenverwaltung",
+    "myJobPostings": "Meine Stellenanzeigen",
+    "success": "Erfolgreich"
+  },
+  "myJobs": {
+    "pageTitle": "Meine Stellenanzeigen",
+    "notLoggedInTitle": "Zugriff verweigert",
+    "notLoggedInMessage": "Sie müssen angemeldet sein, um Ihre Stellenanzeigen zu sehen.",
+    "fetchErrorTitle": "Fehler",
+    "fetchErrorMessage": "Ihre Stellenanzeigen konnten nicht geladen werden.",
+    "deleteConfirmTitle": "Löschen bestätigen",
+    "deleteConfirmMessage": "Möchten Sie diese Stellenanzeige wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "deleteErrorTitle": "Löschen fehlgeschlagen",
+    "deleteErrorMessage": "Stellenanzeige konnte nicht gelöscht werden.",
+    "deleteSuccessTitle": "Stellenanzeige gelöscht",
+    "deleteSuccessMessage": "Stellenanzeige erfolgreich gelöscht!",
+    "noJobsYet": "Sie haben noch keine Stellenanzeigen.",
+    "addJobPrompt": "Erstellen Sie jetzt Ihr erstes Stellenangebot!",
+    "addJobButton": "Neue Stelle hinzufügen",
+    "statusActive": "Aktiv",
+    "statusInactive": "Inaktiv",
+    "postedOn": "Veröffentlicht am",
+    "at": "um"
   },
   "login": {
     "welcomeBack": "Willkommen zurück!",
@@ -65,6 +94,12 @@
     "alertLoginFailed": "Anmeldung fehlgeschlagen",
     "alertEmailNotConfirmed": "Bitte überprüfe deine E-Mails, um dein Konto zu bestätigen.",
     "alertInvalidCredentials": "Ungültige E-Mail oder Passwort. Bitte versuche es erneut."
+  },
+  "tabs": {
+    "jobs": "Jobs",
+    "chats": "Chats",
+    "addJob": "Job Hinzufügen",
+    "profile": "Profil"
   },
   "register": { "title": "Tritt Agricrew bei!", "subtitle": "Erstelle dein Konto, um loszulegen", "iAmA": "Ich bin...", "roleEmployee": "Arbeitnehmer", "roleFarm": "Betrieb/Unternehmen", "roleAccountant": "Buchhalter", "usernameLabel": "Benutzername", "fullNameLabel": "Vollständiger Name / Firmenname", "emailLabel": "E-Mail-Adresse", "passwordLabel": "Passwort", "signUpButton": "Registrieren", "alreadyHaveAccount": "Hast du bereits ein Konto?", "logInLink": "Anmelden", "errorAllFields": "Bitte fülle alle Pflichtfelder aus und wähle deine Rolle.", "errorUsername": "Bitte gib einen Benutzernamen ein.", "errorFullName": "Bitte gib deinen vollständigen Namen oder Firmennamen ein.", "successTitle": "Registrierung erfolgreich", "successMessage": "Bitte überprüfe deine E-Mails, um dein Konto zu bestätigen." },
   "jobList": { "title": "Jobs", "subtitle": "Dein <1>Abenteuer</1> beginnt hier!", "searchPlaceholder": "Suche Jobs oder Betriebe...", "applyNow": "Jetzt bewerben", "loading": "Lade Jobs...", "noJobs": "Keine Jobs gefunden.", "filterTitle": "Jobs filtern", "country": "Land", "region": "Region / Bundesland", "licenses": "Benötigte Führerscheine", "reset": "Zurücksetzen", "applyFilters": "Filter anwenden", "salaryPerHour": "{{salary}}€/Std.", "profile": { "about": "Über den Betrieb", "contact": "Kontakt & Standort", "address": "Adresse", "email": "Kontakt-E-Mail", "website": "Webseite", "details": "Betriebsdetails", "farmSize": "Betriebsgröße", "employees": "Anzahl der Mitarbeiter", "specializations": "Spezialisierungen", "machinery": "Maschinenmarken", "benefits": "Vorteile", "accommodation": "Unterkunft angeboten", "yes": "Ja", "no": "Nein", "done": "Fertig" } },

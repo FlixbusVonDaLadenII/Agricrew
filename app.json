@@ -2,6 +2,7 @@
   "expo": {
     "name": "AgriCrew",
     "slug": "agricrew",
+    "scheme": "agricrew",
     "jsEngine": "hermes",
     "version": "1.0.0",
     "orientation": "portrait",

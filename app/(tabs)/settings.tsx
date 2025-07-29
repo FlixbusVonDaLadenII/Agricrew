@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity, ActivityIndicator, SafeAreaView,
-    Platform, Alert, Image, ScrollView, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Switch, Modal,
+    Platform, Alert, Image, ScrollView, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Switch, Modal, StatusBar
 } from 'react-native';
 import { getThemeColors, Theme } from '@/theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -58,6 +58,7 @@ export default function ProfileScreen() {
     const [availability, setAvailability] = useState('');
     const [isReminderModalVisible, setReminderModalVisible] = useState(false);
 
+
     const fetchProfile = useCallback(async (userId: string) => {
         setLoading(true);
         try {
@@ -100,12 +101,12 @@ export default function ProfileScreen() {
             else { setLoading(false); }
         };
         checkSession();
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } = { subscription: null } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
             if (session?.user) { fetchProfile(session.user.id); }
             else { setProfile(null); }
         });
-        return () => subscription.unsubscribe();
+        return () => subscription?.unsubscribe();
     }, [fetchProfile]);
 
     useFocusEffect(useCallback(() => {
@@ -204,8 +205,15 @@ export default function ProfileScreen() {
 
     if (!session?.user || !profile) {
         return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.header}><Text style={styles.pageTitle}>{t('profile.profile')}</Text></View>
+            <SafeAreaView style={styles.safeAreaContainer}> {/* Use safeAreaContainer for full background */}
+                <StatusBar
+                    barStyle="dark-content" // Assuming light header, dark icons
+                    translucent
+                    backgroundColor="transparent"
+                />
+                <View style={styles.header}> {/* Use header style */}
+                    <Text style={styles.pageTitle}>{t('profile.profile')}</Text>
+                </View>
                 <View style={styles.permissionDeniedContainer}>
                     <MaterialCommunityIcons name="account-off-outline" size={80} color={themeColors.textSecondary} />
                     <Text style={styles.permissionDeniedText}>{t('profile.permissionDenied')}</Text>
@@ -216,8 +224,15 @@ export default function ProfileScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}><Text style={styles.pageTitle}>{t('profile.myProfile')}</Text></View>
+        <SafeAreaView style={styles.safeAreaContainer}> {/* Use safeAreaContainer for full background */}
+            <StatusBar
+                barStyle="dark-content" // Assuming light header, dark icons
+                translucent
+                backgroundColor="transparent"
+            />
+            <View style={styles.header}> {/* Use header style */}
+                <Text style={styles.pageTitle}>{t('profile.myProfile')}</Text>
+            </View>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardAvoidingView}>
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -229,7 +244,7 @@ export default function ProfileScreen() {
                         </View>
 
                         <View style={styles.profileInfoContainer}>
-                            <Text style={styles.sectionTitle}>Language</Text>
+                            <Text style={styles.sectionTitle}>{t('common.language')}</Text>
                             <View style={styles.langContainer}>
                                 <TouchableOpacity style={[styles.langButton, i18n.language === 'en' && styles.langButtonSelected]} onPress={() => i18n.changeLanguage('en')}><Text style={[styles.langButtonText, i18n.language === 'en' && styles.langButtonTextSelected]}>English</Text></TouchableOpacity>
                                 <TouchableOpacity style={[styles.langButton, i18n.language === 'de' && styles.langButtonSelected]} onPress={() => i18n.changeLanguage('de')}><Text style={[styles.langButtonText, i18n.language === 'de' && styles.langButtonTextSelected]}>Deutsch</Text></TouchableOpacity>
@@ -254,6 +269,16 @@ export default function ProfileScreen() {
                                     <View style={styles.row}><View style={styles.col}><Text style={styles.inputLabel}>{t('profile.postalCode')}</Text><TextInput style={styles.input} value={addressPostalCode} onChangeText={setAddressPostalCode} placeholder="e.g., 12345" placeholderTextColor={themeColors.textHint} keyboardType="number-pad" editable={!savingProfile} /></View><View style={styles.col}><Text style={styles.inputLabel}>{t('profile.city')}</Text><TextInput style={styles.input} value={addressCity} onChangeText={setAddressCity} placeholder="e.g., Farmville" placeholderTextColor={themeColors.textHint} editable={!savingProfile} /></View></View>
                                     <Text style={styles.inputLabel}>{t('profile.country')}</Text><TextInput style={styles.input} value={addressCountry} onChangeText={setAddressCountry} placeholder="e.g., Germany" placeholderTextColor={themeColors.textHint} editable={!savingProfile} />
                                     <Text style={styles.inputLabel}>{t('profile.website')}</Text><TextInput style={styles.input} value={website} onChangeText={setWebsite} placeholder="www.myfarm.com" placeholderTextColor={themeColors.textHint} autoCapitalize="none" keyboardType="url" editable={!savingProfile} />
+
+                                    {/* --- My Job Postings Button --- */}
+                                    <Text style={styles.sectionTitle}>{t('profile.jobManagement')}</Text>
+                                    <TouchableOpacity
+                                        style={styles.manageJobsButton}
+                                        onPress={() => router.push('/my-jobs')}
+                                    >
+                                        <MaterialCommunityIcons name="briefcase-edit-outline" size={24} color={themeColors.primary} />
+                                        <Text style={styles.manageJobsButtonText}>{t('profile.myJobPostings')}</Text>
+                                    </TouchableOpacity>
                                 </>
                             ) : (
                                 <>
@@ -288,16 +313,50 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: themeColors.background },
-    header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 30 : 0, paddingBottom: 15, backgroundColor: themeColors.surface, borderBottomWidth: 1, borderBottomColor: themeColors.border, alignItems: 'center', justifyContent: 'center' },
-    pageTitle: { fontFamily: baseFontFamily, fontSize: 24, fontWeight: 'bold', color: themeColors.text },
+    // --- CORRECTED: safeAreaContainer to apply themeColors.surface ---
+    safeAreaContainer: {
+        flex: 1,
+        backgroundColor: themeColors.surface, // This makes the entire screen background light grey, including status bar
+    },
+    // The previous 'container' style that had a dark background will no longer be used as primary
+    // Its `backgroundColor` will be overridden by scrollContent for the form area.
+    container: { // This style might not be needed if safeAreaContainer handles everything, or it can be removed.
+        flex: 1,
+        // backgroundColor: themeColors.background // This background is now handled by scrollContent
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center', // Vertically center items
+        justifyContent: 'center', // Center the title horizontally
+        height: Platform.OS === 'ios' ? 50 : 60, // Standard header height
+        paddingHorizontal: 16,
+        backgroundColor: themeColors.surface, // Light grey background
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: themeColors.border,
+    },
+    pageTitle: {
+        fontFamily: baseFontFamily,
+        fontSize: 17, // Matches other pages' header title size
+        fontWeight: 'bold',
+        color: themeColors.text,
+    },
     centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: themeColors.background },
     permissionDeniedContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
     permissionDeniedText: { fontFamily: baseFontFamily, fontSize: 18, color: themeColors.textSecondary, textAlign: 'center', marginTop: 20, lineHeight: 24 },
     loginPromptButton: { backgroundColor: themeColors.primary, paddingVertical: 12, paddingHorizontal: 25, borderRadius: 10, marginTop: 20 },
     loginPromptButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 16, fontWeight: 'bold' },
     keyboardAvoidingView: { flex: 1 },
-    scrollContent: { flexGrow: 1, alignItems: 'center', paddingVertical: 20, paddingHorizontal: 20 },
+    scrollContent: {
+        flexGrow: 1,
+        alignItems: 'center',
+        paddingVertical: 20,
+        paddingHorizontal: 20,
+        // --- CRITICAL CHANGE HERE ---
+        backgroundColor: themeColors.background, // This ensures the *scrollable content area* is dark gray
+        paddingBottom: 20 + (Platform.OS === 'ios' ? 0 : 0), // Added a base padding to ensure content is not cut off by bottom of screen
+        // Note: For tab screens, Expo Router automatically handles bottom inset for the content *above* the tab bar
+        // if headerShown is false for the tab navigator itself. So `insets.bottom` may not be strictly necessary here.
+    },
     avatarContainer: { marginBottom: 30, position: 'relative' },
     avatar: { width: 120, height: 120, borderRadius: 60, backgroundColor: themeColors.surfaceHighlight, borderWidth: 3, borderColor: themeColors.primary },
     avatarPlaceholder: { width: 120, height: 120, borderRadius: 60, backgroundColor: themeColors.surfaceHighlight, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: themeColors.border, borderStyle: 'dashed' },
@@ -337,4 +396,21 @@ const styles = StyleSheet.create({
     langButtonSelected: { backgroundColor: themeColors.primary },
     langButtonText: { fontFamily: baseFontFamily, color: themeColors.textSecondary, fontWeight: '600' },
     langButtonTextSelected: { color: themeColors.background },
+    manageJobsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: themeColors.surfaceHighlight,
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        marginTop: 20,
+        justifyContent: 'center',
+    },
+    manageJobsButtonText: {
+        fontFamily: baseFontFamily,
+        fontSize: 16,
+        color: themeColors.primary,
+        fontWeight: 'bold',
+        marginLeft: 10,
+    },
 });

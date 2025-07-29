@@ -7,15 +7,22 @@
     "yes": "Yes",
     "no": "No",
     "addPhoto": "Add Photo",
-    "separateWithCommas": "Separate with commas"
+    "separateWithCommas": "Separate with commas",
+    "delete": "Delete",
+    "language": "language"
   },
   "roles": {
     "Arbeitnehmer": "Employee",
     "Betrieb": "Farm / Company",
     "Rechnungsschreiber": "Billing Account"
   },
+  "chatList": {
+    "emptyTitle": "No chats found",
+    "emptySubtitle": "Press apply now to start chatting"
+  },
   "profile": {
     "myProfile": "My Profile",
+    "success": "Success",
     "profile": "Profile",
     "permissionDenied": "You need to be logged in to view your profile.",
     "goToLogin": "Go to Login",
@@ -51,7 +58,9 @@
     "reminderTitle": "Attract More Applicants!",
     "reminderText": "Profiles with a full description, address, and farm details receive significantly more high-quality applications. Take a moment to enhance your listing.",
     "remindMeLater": "Remind Me Later",
-    "illDoIt": "Okay, I'll Do It"
+    "illDoIt": "Okay, I'll Do It",
+    "jobManagement": "Job Management",
+    "myJobPostings": "My Job Postings"
   },
   "login": {
     "welcomeBack": "Welcome Back!",
@@ -132,6 +141,32 @@
     "loadingChatError": "Could not load chat details.",
     "sendMessageError": "Message failed to send. Please try again.",
     "noExperience": "No experience listed."
+  },
+  "tabs": {
+    "jobs": "Jobs",
+    "chats": "Chats",
+    "addJob": "Add Job",
+    "profile": "Profile"
+  },
+  "myJobs": {
+    "pageTitle": "My Job Postings",
+    "notLoggedInTitle": "Access Denied",
+    "notLoggedInMessage": "You need to be logged in to view your jobs.",
+    "fetchErrorTitle": "Error",
+    "fetchErrorMessage": "Could not load your job postings.",
+    "deleteConfirmTitle": "Confirm Deletion",
+    "deleteConfirmMessage": "Are you sure you want to delete this job posting? This action cannot be undone.",
+    "deleteErrorTitle": "Deletion Failed",
+    "deleteErrorMessage": "Could not delete job.",
+    "deleteSuccessTitle": "Job Deleted",
+    "deleteSuccessMessage": "Job posting successfully deleted!",
+    "noJobsYet": "You have no job postings yet.",
+    "addJobPrompt": "Create your first job offer now!",
+    "addJobButton": "Add New Job",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "postedOn": "Posted on",
+    "at": "at"
   },
   "experiences": { "soilCultivation": "Soil Cultivation", "sowing": "Sowing", "plantProtection": "Plant Protection", "slurrySpreading": "Slurry Spreading", "transportWork": "Transport Work", "truckTransport": "Truck Transport", "forageHarvesting": "Forage Harvesting", "combineHarvesting": "Combine Harvesting", "rootCropHarvesting": "Root Crop Harvesting", "greenForage": "Green Forage Technology", "animalHusbandry": "Animal Husbandry" },
   "jobTypes": { "fullTime": "Full-time", "partTime": "Part-time", "seasonal": "Seasonal", "projectBased": "Project-based", "internship": "Internship" },
