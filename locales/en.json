@@ -14,7 +14,7 @@
   "roles": {
     "Arbeitnehmer": "Employee",
     "Betrieb": "Farm / Company",
-    "Rechnungsschreiber": "Billing Account"
+    "Rechnungsschreiber": "Administration"
   },
   "chatList": {
     "emptyTitle": "No chats found",
@@ -81,7 +81,7 @@
     "iAmA": "I am an...",
     "roleEmployee": "Employee",
     "roleFarm": "Farm/Business",
-    "roleAccountant": "Accountant",
+    "roleAccountant": "Administration",
     "usernameLabel": "Username",
     "fullNameLabel": "Full Name / Company Name",
     "emailLabel": "Email Address",
