@@ -12,24 +12,27 @@ import {
     ActivityIndicator,
     Modal,
     ScrollView,
+    Image,
 } from 'react-native';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useFocusEffect } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { getThemeColors } from '@/theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { useUnreadChats } from '@/contexts/UnreadChatContext';
 
 const themeColors = getThemeColors('dark');
 const baseFontFamily = Platform.OS === 'ios' ? 'System' : 'Roboto';
 
-// --- Complete Interfaces ---
+// --- Interfaces ---
 interface Profile {
     id: string;
     role: 'Arbeitnehmer' | 'Betrieb';
     full_name?: string;
     username?: string;
+    avatar_url?: string;
     farm_description?: string;
     website?: string;
     contact_email?: string;
@@ -56,13 +59,12 @@ interface Message {
 interface Participant {
     user_id: string;
     full_name: string;
+    avatar_url: string | null;
 }
 
-// --- Complete Helper Component ---
+// --- Helper Component ---
 const ProfileInfoRow = ({ icon, label, value }: { icon: any, label: string, value?: string | number | null }) => {
-    if (!value) {
-        return null;
-    }
+    if (!value) return null;
     return (
         <View style={styles.profileInfoRow}>
             <MaterialCommunityIcons name={icon} size={20} color={themeColors.textSecondary} style={styles.profileInfoIcon} />
@@ -79,6 +81,7 @@ export default function ChatScreen() {
     const { id: chatId } = useLocalSearchParams<{ id: string }>();
     const navigation = useNavigation();
     const flatListRef = useRef<FlatList>(null);
+    const { markChatAsRead } = useUnreadChats();
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -88,6 +91,15 @@ export default function ChatScreen() {
     const [isProfileModalVisible, setProfileModalVisible] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
     const [isProfileLoading, setIsProfileLoading] = useState(false);
+
+    // Effect to mark the chat as read when the screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            if (chatId) {
+                markChatAsRead(chatId);
+            }
+        }, [chatId, markChatAsRead])
+    );
 
     const handleViewProfile = useCallback(async () => {
         if (!otherUser) return;
@@ -105,8 +117,17 @@ export default function ChatScreen() {
 
     useEffect(() => {
         navigation.setOptions({
+            headerBackTitleVisible: false,
+            headerBackTitle: '',
             headerTitle: () => (
-                <TouchableOpacity onPress={handleViewProfile} disabled={!otherUser}>
+                <TouchableOpacity onPress={handleViewProfile} disabled={!otherUser} style={styles.headerTouchable}>
+                    {otherUser?.avatar_url ? (
+                        <Image source={{ uri: otherUser.avatar_url }} style={styles.headerAvatar} />
+                    ) : (
+                        <View style={styles.headerAvatarPlaceholder}>
+                            <MaterialCommunityIcons name="account" size={20} color={themeColors.textSecondary} />
+                        </View>
+                    )}
                     <View style={styles.headerTitleContainer}>
                         <Text style={styles.headerTitleText}>{otherUser?.full_name || 'Chat'}</Text>
                         <MaterialCommunityIcons name="chevron-down" size={22} color={themeColors.text} style={styles.headerTitleIcon} />
@@ -161,7 +182,8 @@ export default function ChatScreen() {
             .on<Profile>('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${otherUser.user_id}` },
                 (payload) => {
                     const newName = payload.new.username || payload.new.full_name || 'Unknown User';
-                    setOtherUser(currentUser => ({ ...currentUser!, full_name: newName }));
+                    const newAvatar = payload.new.avatar_url || null;
+                    setOtherUser(currentUser => ({ ...currentUser!, full_name: newName, avatar_url: newAvatar }));
                 }
             )
             .subscribe();
@@ -206,11 +228,11 @@ export default function ChatScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={styles.keyboardAvoidingContainer}
-                keyboardVerticalOffset={90}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
                 <FlatList
                     ref={flatListRef}
@@ -218,7 +240,7 @@ export default function ChatScreen() {
                     renderItem={renderMessageBubble}
                     keyExtractor={(item) => item.id}
                     style={styles.messageList}
-                    contentContainerStyle={{ paddingBottom: 5 }} // Removed extra top padding
+                    contentContainerStyle={{ paddingTop: 10, paddingBottom: 5 }}
                     onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                     onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
                 />
@@ -236,12 +258,20 @@ export default function ChatScreen() {
                         {isProfileLoading ? <ActivityIndicator size="large" color={themeColors.primary} /> : selectedProfile ? (
                             <>
                                 <ScrollView showsVerticalScrollIndicator={false}>
+                                    <View style={styles.modalAvatarContainer}>
+                                        {selectedProfile.avatar_url ? (
+                                            <Image source={{ uri: selectedProfile.avatar_url }} style={styles.modalAvatar} />
+                                        ) : (
+                                            <View style={styles.modalAvatarPlaceholder}>
+                                                <MaterialCommunityIcons name="account" size={40} color={themeColors.textSecondary} />
+                                            </View>
+                                        )}
+                                    </View>
                                     <Text style={styles.profileName}>
                                         {selectedProfile.role === 'Betrieb'
                                             ? selectedProfile.full_name
                                             : selectedProfile.username || selectedProfile.full_name}
                                     </Text>
-
                                     {selectedProfile.role === 'Betrieb' ? (
                                         <>
                                             {selectedProfile.farm_description && (<><Text style={styles.profileSectionTitle}>{t('jobList.profile.about')}</Text><Text style={styles.profileDescription}>{selectedProfile.farm_description}</Text></>)}
@@ -262,7 +292,7 @@ export default function ChatScreen() {
                                                 <View style={styles.chipsContainer}>
                                                     {selectedProfile.experience.map(item => (
                                                         <View key={item} style={styles.chip}>
-                                                            <Text style={styles.chipText}>{item}</Text>
+                                                            <Text style={styles.chipText}>{t(`experiences.${item}`)}</Text>
                                                         </View>
                                                     ))}
                                                 </View>
@@ -287,9 +317,6 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: themeColors.background,
     },
-    innerContainer: {
-        flex: 1,
-    },
     centeredContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -307,7 +334,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 10,
-        paddingTop: 8,
+        paddingTop: 10,
+        paddingBottom: 10,
         borderTopWidth: 1,
         borderTopColor: themeColors.border,
         backgroundColor: themeColors.background,
@@ -371,6 +399,10 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginHorizontal: 8,
     },
+    headerTouchable: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     headerTitleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -382,6 +414,22 @@ const styles = StyleSheet.create({
     },
     headerTitleIcon: {
         marginLeft: 4,
+    },
+    headerAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 10,
+        backgroundColor: themeColors.surfaceHighlight,
+    },
+    headerAvatarPlaceholder: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 10,
+        backgroundColor: themeColors.surfaceHighlight,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     modalCenteredView: {
         flex: 1,
@@ -400,6 +448,24 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 5,
+    },
+    modalAvatarContainer: {
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    modalAvatar: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: themeColors.surfaceHighlight,
+    },
+    modalAvatarPlaceholder: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: themeColors.surfaceHighlight,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     profileName: { fontFamily: baseFontFamily, fontSize: 24, fontWeight: 'bold', color: themeColors.text, textAlign: 'center', marginBottom: 20 },
     profileSectionTitle: { fontFamily: baseFontFamily, fontSize: 14, fontWeight: 'bold', color: themeColors.textSecondary, marginTop: 15, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },

@@ -9,19 +9,17 @@ import {
     Alert,
     RefreshControl,
     Platform,
-    StatusBar // Import StatusBar
+    StatusBar
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useFocusEffect, router } from 'expo-router';
 import { getThemeColors } from '@/theme/colors';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context'; // Ensure SafeAreaView is imported here
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
 const themeColors = getThemeColors('dark');
-// baseFontFamily is defined in styles, no need to redeclare here
 
-// --- Interfaces (re-use from IndexScreen/AddJobScreen as needed) ---
 interface Job {
     id: string;
     title: string;
@@ -33,10 +31,8 @@ interface Job {
     required_licenses: string[];
     job_type: string[] | null;
     is_active: boolean;
-    farm_id: string; // The ID of the farm that posted the job
+    farm_id: string;
     created_at: string;
-    // Note: 'profiles' is implicitly selected by supabase.select(`*, profiles(*)`) but not directly in this interface
-    // If you need specific profile details on the job object, add them here.
 }
 
 export default function MyJobsScreen() {
@@ -58,14 +54,14 @@ export default function MyJobsScreen() {
         setRefreshing(true);
         const { data, error } = await supabase
             .from('jobs')
-            .select(`*`) // Select all fields for the job
-            .eq('farm_id', session.user.id) // Filter by current user's farm_id
-            .order('created_at', { ascending: false }); // Order by creation time
+            .select(`*`)
+            .eq('farm_id', session.user.id)
+            .order('created_at', { ascending: false });
 
         if (error) {
             console.error('Error fetching my jobs:', error);
             Alert.alert(t('myJobs.fetchErrorTitle'), t('myJobs.fetchErrorMessage'));
-            setJobs([]); // Clear jobs on error
+            setJobs([]);
         } else if (data) {
             setJobs(data as Job[]);
         }
@@ -73,7 +69,6 @@ export default function MyJobsScreen() {
         setRefreshing(false);
     }, [t]);
 
-    // Use useFocusEffect to re-fetch jobs whenever the screen comes into focus
     useFocusEffect(useCallback(() => {
         fetchMyJobs();
     }, [fetchMyJobs]));
@@ -93,7 +88,7 @@ export default function MyJobsScreen() {
                             Alert.alert(t('myJobs.deleteErrorTitle'), error.message || t('myJobs.deleteErrorMessage'));
                         } else {
                             Alert.alert(t('myJobs.deleteSuccessTitle'), t('myJobs.deleteSuccessMessage'));
-                            fetchMyJobs(); // Re-fetch jobs after successful deletion
+                            fetchMyJobs();
                         }
                     },
                 },
@@ -101,23 +96,10 @@ export default function MyJobsScreen() {
         );
     };
 
-    const handleEditJob = (job: Job) => {
-        // Implement navigation to your AddJobScreen or a dedicated EditJobScreen
-        // and pass the job data as parameters for pre-filling the form.
-        Alert.alert("Edit Job", `Implement edit for job: ${job.title}`);
-        // Example: router.push({ pathname: '/add-job', params: { jobId: job.id, mode: 'edit' } });
-    };
-
     const renderJobItem = ({ item }: { item: Job }) => (
         <View style={styles.jobCard}>
             <View style={styles.jobCardHeader}>
                 <Text style={styles.jobCardTitle}>{item.title}</Text>
-                <TouchableOpacity
-                    onPress={() => handleEditJob(item)}
-                    style={styles.iconButton}
-                >
-                    <MaterialCommunityIcons name="pencil-outline" size={20} color={themeColors.primary} />
-                </TouchableOpacity>
                 <TouchableOpacity
                     onPress={() => handleDeleteJob(item.id)}
                     style={styles.iconButton}
@@ -147,10 +129,9 @@ export default function MyJobsScreen() {
     }
 
     return (
-        // Use SafeAreaView with edges top/left/right only
         <SafeAreaView style={styles.safeAreaContainer} edges={['top', 'left', 'right']}>
             <StatusBar
-                barStyle="dark-content" // Dark icons on light background for status bar
+                barStyle="dark-content"
                 translucent
                 backgroundColor="transparent"
             />
@@ -159,25 +140,22 @@ export default function MyJobsScreen() {
                     <MaterialCommunityIcons name="arrow-left" size={24} color={themeColors.text} />
                 </TouchableOpacity>
                 <Text style={styles.pageTitle}>{t('myJobs.pageTitle')}</Text>
-                <View style={styles.placeholderForButton} /> {/* Placeholder to balance the back button */}
+                <View style={styles.placeholderForButton} />
             </View>
             <FlatList
                 data={jobs}
                 renderItem={renderJobItem}
                 keyExtractor={(item) => item.id}
-                style={styles.listContainer} // This FlatList container gets the dark background
+                style={styles.listContainer}
                 contentContainerStyle={[
                     styles.listContentContainer,
-                    // Dynamically add paddingBottom equal to the bottom safe area inset
-                    // This ensures the content scrolls to the very bottom, effectively
-                    // making the FlatList content end precisely at the top of the tab bar.
                     { paddingBottom: styles.listContentContainer.paddingBottom + insets.bottom }
                 ]}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={fetchMyJobs} tintColor={themeColors.primary} />
                 }
                 ListEmptyComponent={
-                    !loading ? ( // Fix for TS2322: use ternary operator to return null instead of false
+                    !loading ? (
                         <View style={styles.emptyContainer}>
                             <MaterialCommunityIcons name="clipboard-text-off-outline" size={60} color={themeColors.textSecondary} />
                             <Text style={styles.emptyText}>{t('myJobs.noJobsYet')}</Text>
@@ -187,7 +165,7 @@ export default function MyJobsScreen() {
                                 <Text style={styles.addJobButtonText}>{t('myJobs.addJobButton')}</Text>
                             </TouchableOpacity>
                         </View>
-                    ) : null // Explicitly return null when loading
+                    ) : null
                 }
             />
         </SafeAreaView>
@@ -197,37 +175,30 @@ export default function MyJobsScreen() {
 const styles = StyleSheet.create({
     safeAreaContainer: {
         flex: 1,
-        backgroundColor: themeColors.surface, // This makes the status bar area and the entire screen light grey
-    },
-    // The previous 'container' style that had a dark background will no longer be used as primary
-    // Its `backgroundColor` will be handled by listContainer.
-    container: { // This style is likely redundant and can be removed.
-        flex: 1,
-        // backgroundColor: themeColors.background, // Background is handled by safeAreaContainer and listContainer
+        backgroundColor: themeColors.surface,
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'center', // Vertically center items
-        justifyContent: 'space-between', // Space out items (back button, title, placeholder)
-        height: Platform.OS === 'ios' ? 50 : 60, // Standard header height
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: Platform.OS === 'ios' ? 50 : 60,
         paddingHorizontal: 16,
-        backgroundColor: themeColors.surface, // Header background color is light grey
+        backgroundColor: themeColors.surface,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: themeColors.border,
     },
     backButton: {
-        padding: 8, // Add padding to make the touch target larger
+        padding: 8,
     },
     placeholderForButton: {
-        width: 40, // Same width as backButton icon + padding to balance the title
+        width: 40,
     },
     pageTitle: {
-        fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto', // Use direct font selection here
-        fontSize: 17, // Consistent with other headers
+        fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+        fontSize: 17,
         fontWeight: 'bold',
         color: themeColors.text,
-        flex: 1, // Allow title to take remaining space and push buttons to sides
-        textAlign: 'center', // Center title horizontally within its flex space
+        textAlign: 'center',
     },
     centeredContainer: {
         flex: 1,
@@ -237,12 +208,12 @@ const styles = StyleSheet.create({
     },
     listContainer: {
         flex: 1,
-        backgroundColor: themeColors.background, // Main content background is dark grey
+        backgroundColor: themeColors.background,
     },
     listContentContainer: {
         paddingTop: 10,
         paddingHorizontal: 16,
-        paddingBottom: 20, // Base padding, `insets.bottom` will be added dynamically in JSX
+        paddingBottom: 20,
     },
     jobCard: {
         backgroundColor: themeColors.surface,

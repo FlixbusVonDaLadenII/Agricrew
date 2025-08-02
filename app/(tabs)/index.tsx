@@ -37,6 +37,7 @@ interface FarmProfile {
 interface Job {
     id: string; title: string; description: string; location: string; country: string; region: string;
     required_licenses: string[]; salary_per_hour: number | null; job_type: string[] | null; is_active: boolean;
+    is_urgent: boolean;
     farm: FarmProfile;
 }
 interface ChatCreationResult { chat_id: string; is_new: boolean; }
@@ -56,7 +57,6 @@ const COLLAPSED_HEADER_HEIGHT = COLLAPSED_TITLE_BAR_HEIGHT;
 const SCROLL_DISTANCE = INITIAL_HEADER_TITLE_AREA_HEIGHT - COLLAPSED_HEADER_HEIGHT;
 const TOTAL_HEADER_AND_SEARCH_BAR_HEIGHT_AT_TOP = INITIAL_HEADER_TITLE_AREA_HEIGHT + SEARCH_BAR_TOTAL_HEIGHT;
 
-
 export default function IndexScreen() {
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
@@ -69,8 +69,8 @@ export default function IndexScreen() {
     const [loading, setLoading] = useState(true);
     const [searchText, setSearchText] = useState('');
     const [isFilterModalVisible, setFilterModalVisible] = useState(false);
-    const [isProfileModalVisible, setProfileModalVisible] = useState(false);
-    const [selectedFarm, setSelectedFarm] = useState<FarmProfile | null>(null);
+    const [isDetailsModalVisible, setDetailsModalVisible] = useState(false);
+    const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
     const [selectedLicenses, setSelectedLicenses] = useState<string[]>([]);
     const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export default function IndexScreen() {
             let fetchedJobs: Job[] = data.map((job: any) => ({
                 id: job.id, title: job.title, description: job.description, location: job.location, country: job.country,
                 region: job.region, salary_per_hour: job.salary_per_hour, required_licenses: job.required_licenses || [],
-                job_type: job.job_type || [], is_active: job.is_active,
+                job_type: job.job_type || [], is_active: job.is_active, is_urgent: job.is_urgent || false,
                 farm: job.profiles ? { ...job.profiles } : { id: '', full_name: 'Unknown Farm' },
             }));
 
@@ -106,12 +106,18 @@ export default function IndexScreen() {
 
                 const matchesLicenses = appliedLicenses.length === 0 || appliedLicenses.every(license => job.required_licenses.includes(license));
 
-                // Corrected filtering: Compare key vs key
                 const matchesCountry = !appliedCountry || job.country === appliedCountry;
                 const matchesRegion = appliedRegions.length === 0 || appliedRegions.includes(job.region);
 
                 return matchesSearch && matchesLicenses && matchesCountry && matchesRegion;
             });
+
+            fetchedJobs.sort((a, b) => {
+                if (a.is_urgent && !b.is_urgent) return -1;
+                if (!a.is_urgent && b.is_urgent) return 1;
+                return 0;
+            });
+
             setJobs(fetchedJobs);
         } catch (err: any) {
             console.error('Error fetching jobs:', err);
@@ -124,9 +130,9 @@ export default function IndexScreen() {
 
     useFocusEffect(useCallback(() => { fetchAndFilterJobs(); }, [fetchAndFilterJobs]));
 
-    const handleViewFarmProfile = (farm: FarmProfile) => {
-        setSelectedFarm(farm);
-        setProfileModalVisible(true);
+    const handleViewDetails = (job: Job) => {
+        setSelectedJob(job);
+        setDetailsModalVisible(true);
     };
 
     const handleStartChat = async (jobPosterId: string) => {
@@ -171,20 +177,22 @@ export default function IndexScreen() {
     const renderJobItem = ({ item }: { item: Job }) => {
         const countryDisplay = item.country ? t(`filters.countries.${item.country}`) : item.country;
         const regionDisplay = item.country && item.region ? t(`filters.regions.${item.country}.${item.region}`) : item.region;
-
-        const translatedJobTypes = item.job_type
-            ? item.job_type.map(key => t(`jobTypes.${key}`)).join(', ')
-            : '';
-
-        const salaryDisplay = item.salary_per_hour
-            ? t('jobList.salaryPerHour', { salary: item.salary_per_hour })
-            : null;
+        const translatedJobTypes = item.job_type ? item.job_type.map(key => t(`jobTypes.${key}`)).join(', ') : '';
+        const salaryDisplay = item.salary_per_hour ? t('jobList.salaryPerHour', { salary: item.salary_per_hour }) : null;
 
         return (
-            <TouchableOpacity onPress={() => handleViewFarmProfile(item.farm)}>
+            <TouchableOpacity onPress={() => handleViewDetails(item)}>
                 <View style={styles.jobCard}>
-                    <Text style={styles.jobCardTitle}>{item.title}</Text>
+                    <View style={styles.jobCardHeader}>
+                        <Text style={styles.jobCardTitle}>{item.title}</Text>
+                        {item.is_urgent && (
+                            <View style={styles.urgentTagContainer}>
+                                <Text style={styles.urgentTagText}>{t('SOS')}</Text>
+                            </View>
+                        )}
+                    </View>
                     <Text style={styles.jobCardSubtitle}>{item.farm.full_name} • {item.location} ({regionDisplay}, {countryDisplay})</Text>
+                    <Text style={styles.jobCardDescription} numberOfLines={2}>{item.description}</Text>
                     <View style={styles.jobCardDetailRow}>
                         {salaryDisplay && <View style={styles.jobCardIconText}><MaterialCommunityIcons name="currency-eur" size={16} color={themeColors.textSecondary} /><Text style={styles.jobCardDetailText}>{salaryDisplay}</Text></View>}
                         {translatedJobTypes && <View style={styles.jobCardIconText}><MaterialCommunityIcons name="briefcase-outline" size={16} color={themeColors.textSecondary} /><Text style={styles.jobCardDetailText}>{translatedJobTypes}</Text></View>}
@@ -255,27 +263,36 @@ export default function IndexScreen() {
                 </View>
             </Modal>
 
-            <Modal animationType="slide" transparent={true} visible={isProfileModalVisible} onRequestClose={() => setProfileModalVisible(false)}>
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isDetailsModalVisible}
+                onRequestClose={() => setDetailsModalVisible(false)}
+            >
                 <View style={styles.centeredView}>
-                    <View style={styles.profileModalView}>
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            <Text style={styles.profileName}>{selectedFarm?.full_name}</Text>
-                            {selectedFarm?.farm_description && (<><Text style={styles.profileSectionTitle}>{t('jobList.profile.about')}</Text><Text style={styles.profileDescription}>{selectedFarm.farm_description}</Text></>)}
-                            <Text style={styles.profileSectionTitle}>{t('jobList.profile.contact')}</Text>
-                            {selectedFarm?.address_street && <ProfileInfoRow icon="map-marker-outline" label={t('jobList.profile.address')} value={`${selectedFarm.address_street}, ${selectedFarm.address_postal_code} ${selectedFarm.address_city}, ${selectedFarm.address_country}`} />}
-                            {selectedFarm?.contact_email && <ProfileInfoRow icon="email-outline" label={t('jobList.profile.email')} value={selectedFarm.contact_email} />}
-                            {selectedFarm?.website && <TouchableOpacity onPress={() => Linking.openURL(selectedFarm!.website!)}><View style={styles.profileInfoRow}><MaterialCommunityIcons name="web" size={20} color={themeColors.textSecondary} style={styles.profileInfoIcon} /><View><Text style={styles.profileInfoLabel}>{t('jobList.profile.website')}</Text><Text style={[styles.profileInfoValue, styles.profileWebsite]}>{selectedFarm.website}</Text></View></View></TouchableOpacity>}
-                            <Text style={styles.profileSectionTitle}>{t('jobList.profile.details')}</Text>
-                            <ProfileInfoRow icon="pine-tree" label={t('jobList.profile.farmSize')} value={selectedFarm?.farm_size_hectares ? `${selectedFarm.farm_size_hectares} ha` : null} />
-                            <ProfileInfoRow icon="account-group-outline" label={t('jobList.profile.employees')} value={selectedFarm?.number_of_employees} />
-                            <ProfileInfoRow icon="sprout-outline" label={t('jobList.profile.specializations')} value={selectedFarm?.farm_specialization?.join(', ')} />
-                            <ProfileInfoRow icon="tractor" label={t('jobList.profile.machinery')} value={selectedFarm?.machinery_brands?.join(', ')} />
-                            {selectedFarm?.accommodation_offered !== null && (<><Text style={styles.profileSectionTitle}>{t('jobList.profile.benefits')}</Text><ProfileInfoRow icon="home-city-outline" label={t('jobList.profile.accommodation')} value={selectedFarm?.accommodation_offered ? t('jobList.profile.yes') : t('jobList.profile.no')} /></>)}
-                        </ScrollView>
-                        <TouchableOpacity style={styles.profileModalButton} onPress={() => setProfileModalVisible(false)}>
-                            <Text style={styles.modalButtonText}>{t('jobList.profile.done')}</Text>
+                    <View style={styles.detailsModalView}>
+                        {selectedJob && (
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                <Text style={styles.profileName}>{selectedJob.title}</Text>
+                                <Text style={styles.modalLocation}>{selectedJob.farm.full_name} • {selectedJob.location}</Text>
+                                <View style={styles.divider} />
+                                <Text style={styles.profileSectionTitle}>{selectedJob.title}</Text>
+                                <Text style={styles.profileDescription}>{selectedJob.description}</Text>
+                                <View style={styles.divider} />
+                                <Text style={styles.profileSectionTitle}>{t('jobList.profile.about')}</Text>
+                                {selectedJob.farm.farm_description && (
+                                    <Text style={styles.profileDescription}>{selectedJob.farm.farm_description}</Text>
+                                )}
+                                <ProfileInfoRow icon="map-marker-outline" label={t('jobList.profile.address')} value={selectedJob.farm.address_street ? `${selectedJob.farm.address_street}, ${selectedJob.farm.address_postal_code} ${selectedJob.farm.address_city}` : null} />
+                                {selectedJob.farm.contact_email && <ProfileInfoRow icon="email-outline" label={t('jobList.profile.email')} value={selectedJob.farm.contact_email} />}
+                                {selectedJob.farm.website && <TouchableOpacity onPress={() => Linking.openURL(selectedJob.farm.website!)}><View style={styles.profileInfoRow}><MaterialCommunityIcons name="web" size={20} color={themeColors.textSecondary} style={styles.profileInfoIcon} /><View><Text style={styles.profileInfoLabel}>{t('jobList.profile.website')}</Text><Text style={[styles.profileInfoValue, styles.profileWebsite]}>{selectedJob.farm.website}</Text></View></View></TouchableOpacity>}
+                                <ProfileInfoRow icon="pine-tree" label={t('jobList.profile.farmSize')} value={selectedJob.farm.farm_size_hectares ? `${selectedJob.farm.farm_size_hectares} ha` : null} />
+                                <ProfileInfoRow icon="account-group-outline" label={t('jobList.profile.employees')} value={selectedJob.farm.number_of_employees} />
+                            </ScrollView>
+                        )}
+                        <TouchableOpacity style={styles.closeModalButton} onPress={() => setDetailsModalVisible(false)}>
+                            <MaterialCommunityIcons name="close-circle-outline" size={30} color={themeColors.textSecondary} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.closeModalButton} onPress={() => setProfileModalVisible(false)}><MaterialCommunityIcons name="close-circle-outline" size={30} color={themeColors.textSecondary} /></TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -286,8 +303,10 @@ export default function IndexScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
     fixedTopSpacer: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 12 },
-    animatedHeaderContainer: { position: 'absolute', left: 0, right: 0, backgroundColor: themeColors.background, overflow: 'hidden', zIndex: 11, paddingHorizontal: 20 },
-    headerTextContainer: { position: 'absolute', left: 20, right: 20, top: 0 },
+    animatedHeaderContainer: { position: 'absolute', left: 0, right: 0, backgroundColor: themeColors.background, overflow: 'hidden', zIndex: 11, paddingHorizontal: 20, justifyContent: 'center' },
+    headerTextContainer: {
+        // This is the only changed style
+    },
     screenTitle: { fontFamily: baseFontFamily, fontWeight: 'bold', color: themeColors.text },
     pageSubtitle: { fontFamily: baseFontFamily, fontWeight: '600', color: themeColors.textSecondary, marginTop: 2 },
     headerAccentText: { color: themeColors.primary },
@@ -297,13 +316,17 @@ const styles = StyleSheet.create({
     searchInput: { flex: 1, fontFamily: baseFontFamily, fontSize: 16, color: themeColors.text },
     filterButton: { backgroundColor: themeColors.surfaceHighlight, borderRadius: 12, width: 48, height: SEARCH_BAR_HEIGHT, justifyContent: 'center', alignItems: 'center' },
     jobCard: { backgroundColor: themeColors.surface, borderRadius: 18, padding: 20, marginBottom: 15, shadowColor: 'rgba(0,0,0,0.1)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 5, overflow: 'hidden' },
-    jobCardTitle: { fontFamily: baseFontFamily, fontSize: 22, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 },
-    jobCardSubtitle: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, marginBottom: 12 },
+    jobCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+    jobCardTitle: { fontFamily: baseFontFamily, fontSize: 22, fontWeight: 'bold', color: themeColors.text, flex: 1 },
+    jobCardSubtitle: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, marginBottom: 4 },
+    jobCardDescription: { fontFamily: baseFontFamily, fontSize: 15, color: themeColors.text, lineHeight: 22, marginBottom: 12 },
     jobCardDetailRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 5, marginBottom: 15 },
     jobCardIconText: { flexDirection: 'row', alignItems: 'center', marginRight: 15, marginBottom: 5 },
     jobCardDetailText: { fontFamily: baseFontFamily, fontSize: 14, color: themeColors.textSecondary, marginLeft: 5 },
     applyButton: { backgroundColor: themeColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: themeColors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
     applyButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 17, fontWeight: '600' },
+    urgentTagContainer: { backgroundColor: themeColors.danger, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+    urgentTagText: { fontFamily: baseFontFamily, fontSize: 14, fontWeight: 'bold', color: '#fff' },
     overlayLoadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: themeColors.background, zIndex: 9 },
     loadingText: { fontFamily: baseFontFamily, color: themeColors.textSecondary, marginTop: 10, fontSize: 16 },
     overlayEmptyContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: themeColors.background, padding: 20, zIndex: 9 },
@@ -327,28 +350,15 @@ const styles = StyleSheet.create({
     resetButton: { backgroundColor: themeColors.surfaceHighlight, marginRight: 10 },
     modalButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 17, fontWeight: '600', },
     closeModalButton: { position: 'absolute', top: 15, right: 15, zIndex: 1 },
-    profileModalView: { width: '90%', maxHeight: '85%', backgroundColor: themeColors.surface, borderRadius: 20, padding: 25, shadowColor: 'rgba(0,0,0,0.2)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.8, shadowRadius: 10, elevation: 6 },
-    profileName: { fontFamily: baseFontFamily, fontSize: 24, fontWeight: 'bold', color: themeColors.text, textAlign: 'center', marginBottom: 10 },
-    profileSectionTitle: { fontFamily: baseFontFamily, fontSize: 14, fontWeight: 'bold', color: themeColors.textSecondary, marginTop: 20, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+    detailsModalView: { width: '90%', maxHeight: '85%', backgroundColor: themeColors.surface, borderRadius: 20, padding: 25, shadowColor: 'rgba(0,0,0,0.2)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.8, shadowRadius: 10, elevation: 6 },
+    modalLocation: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, textAlign: 'center', marginBottom: 16, },
+    divider: { height: 1, backgroundColor: themeColors.border, marginVertical: 16 },
+    profileName: { fontFamily: baseFontFamily, fontSize: 24, fontWeight: 'bold', color: themeColors.text, textAlign: 'center' },
+    profileSectionTitle: { fontFamily: baseFontFamily, fontSize: 14, fontWeight: 'bold', color: themeColors.textSecondary, marginTop: 10, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
     profileDescription: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.text, lineHeight: 24 },
     profileInfoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 },
     profileInfoIcon: { marginRight: 15, marginTop: 2, color: themeColors.textSecondary },
     profileInfoLabel: { fontFamily: baseFontFamily, fontSize: 12, color: themeColors.textSecondary, marginBottom: 2 },
     profileInfoValue: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.text, flexShrink: 1 },
     profileWebsite: { color: themeColors.primary, textDecorationLine: 'underline' },
-    profileModalButton: {
-        backgroundColor: themeColors.primary,
-        paddingVertical: 15,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 20,
-    },
-    profileModalButtonText: {
-        fontFamily: baseFontFamily,
-        color: themeColors.background,
-        fontSize: 17,
-        fontWeight: '600',
-    },
 });

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView,
     ActivityIndicator, Alert, Platform, Switch, Modal, FlatList, StatusBar,
-    KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard // Ensure these are imported
+    KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard
 } from 'react-native';
 import { getThemeColors, Theme } from '@/theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -25,7 +25,7 @@ interface UserProfileRole {
 
 export default function AddJobScreen() {
     const { t } = useTranslation();
-    const insets = useSafeAreaInsets(); // Hook to get safe area insets
+    const insets = useSafeAreaInsets();
 
     const jobTypesOptions = t('jobTypes', { returnObjects: true }) as Record<string, string>;
     const jobTypeKeys = Object.keys(jobTypesOptions);
@@ -47,6 +47,8 @@ export default function AddJobScreen() {
     const [selectedLicenses, setSelectedLicenses] = useState<string[]>([]);
     const [jobTypes, setJobTypes] = useState<string[]>([]);
     const [isActive, setIsActive] = useState(true);
+    // NEW STATE for urgent job status
+    const [isUrgent, setIsUrgent] = useState(false);
 
     // UI States for Modals/Focus
     const [countryPickerVisible, setCountryPickerVisible] = useState(false);
@@ -121,6 +123,7 @@ export default function AddJobScreen() {
             required_licenses: selectedLicenses,
             job_type: jobTypes,
             is_active: isActive,
+            is_urgent: isUrgent, // ADDED: New field for urgent status
             farm_id: session!.user.id,
         });
         setSubmitting(false);
@@ -130,7 +133,7 @@ export default function AddJobScreen() {
             Alert.alert(t('addJob.alertSuccess'), t('addJob.alertSuccessMessage'));
             setTitle(''); setDescription(''); setLocation('');
             setCountry(countryKeys[0]); setRegion(''); setSalaryPerHour('');
-            setSelectedLicenses([]); setJobTypes([]); setIsActive(true);
+            setSelectedLicenses([]); setJobTypes([]); setIsActive(true); setIsUrgent(false); // Reset urgent state
             router.replace('/(tabs)');
         }
     };
@@ -153,7 +156,6 @@ export default function AddJobScreen() {
 
     if (loadingUser) { return <View style={styles.centeredContainer}><ActivityIndicator size="large" color={themeColors.primary} /></View>; }
 
-    // Render for permission denied role
     if (userRole !== 'Betrieb') {
         return (
             <SafeAreaView style={styles.safeAreaContainer}>
@@ -174,17 +176,15 @@ export default function AddJobScreen() {
     }
 
     return (
-        // Set edges to ['top', 'left', 'right'] to allow content to extend to bottom of screen (under tab bar)
         <SafeAreaView style={styles.safeAreaContainer} edges={['top', 'left', 'right']}>
             <StatusBar
-                barStyle="dark-content" // Assuming light header, dark icons
+                barStyle="dark-content"
                 translucent
                 backgroundColor="transparent"
             />
             <View style={styles.header}>
                 <Text style={styles.pageTitle}>{t('addJob.pageTitle')}</Text>
             </View>
-            {/* THIS IS THE KEY CHANGE: A wrapper View to control the dark background */}
             <View style={styles.contentWrapper}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -230,13 +230,23 @@ export default function AddJobScreen() {
                             <View style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('addJob.sectionStatus')}</Text>
                                 <View style={styles.toggleRow}><Text style={styles.label}>{t('addJob.labelActive')}</Text><Switch trackColor={{ false: themeColors.textSecondary, true: themeColors.primary + '80' }} thumbColor={isActive ? themeColors.primary : themeColors.textSecondary} onValueChange={setIsActive} value={isActive} /></View>
+                                {/* NEW URGENT TOGGLE */}
+                                <View style={styles.toggleRow}>
+                                    <Text style={styles.label}>{t('SOS')}</Text>
+                                    <Switch
+                                        trackColor={{ false: themeColors.textSecondary, true: themeColors.primary + '80' }}
+                                        thumbColor={isUrgent ? themeColors.primary : themeColors.textSecondary}
+                                        onValueChange={setIsUrgent}
+                                        value={isUrgent}
+                                    />
+                                </View>
                             </View>
 
                             <TouchableOpacity style={styles.submitButton} onPress={handleAddJob} disabled={submitting}>{submitting ? <ActivityIndicator color={themeColors.background} /> : <Text style={styles.submitButtonText}>{t('addJob.buttonPublish')}</Text>}</TouchableOpacity>
                         </ScrollView>
                     </TouchableWithoutFeedback>
                 </KeyboardAvoidingView>
-            </View> {/* End contentWrapper */}
+            </View>
 
             <Modal animationType="slide" transparent={true} visible={countryPickerVisible} onRequestClose={handleCountrySelectionCancel}><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>{t('addJob.modalSelectCountry')}</Text><TextInput style={styles.modalSearchInput} placeholder={t('addJob.modalSearchPlaceholder')} value={countrySearch} onChangeText={setCountrySearch} placeholderTextColor={themeColors.textHint} /><FlatList data={filteredCountries} keyExtractor={item => item} renderItem={({ item }) => renderPickerItem({ item, isCountryPicker: true, tempValue: tempCountry, setTempValue: setTempCountry })} ListEmptyComponent={!filteredCountries.length ? <Text style={styles.emptyListText}>{t('addJob.modalNoResults')}</Text> : null} style={styles.listContainer} /><View style={styles.modalButtonContainer}><TouchableOpacity style={[styles.modalActionButton, styles.modalCancelButton]} onPress={handleCountrySelectionCancel}><Text style={styles.modalCancelButtonText}>{t('addJob.modalCancel')}</Text></TouchableOpacity><TouchableOpacity style={[styles.modalActionButton, styles.modalDoneButton]} onPress={handleCountrySelectionDone}><Text style={styles.modalDoneButtonText}>{t('addJob.modalDone')}</Text></TouchableOpacity></View></View></View></Modal>
             <Modal animationType="slide" transparent={true} visible={regionPickerVisible} onRequestClose={handleRegionSelectionCancel}><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>{t('addJob.modalSelectRegion')}</Text><TextInput style={styles.modalSearchInput} placeholder={t('addJob.modalSearchPlaceholder')} value={regionSearch} onChangeText={setRegionSearch} placeholderTextColor={themeColors.textHint} /><FlatList data={filteredRegions} keyExtractor={item => item} renderItem={({ item }) => renderPickerItem({ item, isCountryPicker: false, tempValue: tempRegion, setTempValue: setTempRegion })} ListEmptyComponent={!filteredRegions.length ? <Text style={styles.emptyListText}>{t('addJob.modalNoResults')}</Text> : null} style={styles.listContainer} /><View style={styles.modalButtonContainer}><TouchableOpacity style={[styles.modalActionButton, styles.modalCancelButton]} onPress={handleRegionSelectionCancel}><Text style={styles.modalCancelButtonText}>{t('addJob.modalCancel')}</Text></TouchableOpacity><TouchableOpacity style={[styles.modalActionButton, styles.modalDoneButton]} onPress={handleRegionSelectionDone}><Text style={styles.modalDoneButtonText}>{t('addJob.modalDone')}</Text></TouchableOpacity></View></View></View></Modal>
@@ -248,42 +258,39 @@ const SPACING = { xsmall: 4, small: 8, medium: 16, large: 24, xlarge: 32 };
 const styles = StyleSheet.create({
     safeAreaContainer: {
         flex: 1,
-        backgroundColor: themeColors.surface, // This makes the status bar area and header light grey
+        backgroundColor: themeColors.surface,
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'center', // Vertically centers items in the row
-        justifyContent: 'center', // Centers the title horizontally
-        height: Platform.OS === 'ios' ? 50 : 60, // Standard header height
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: Platform.OS === 'ios' ? 50 : 60,
         paddingHorizontal: 16,
-        backgroundColor: themeColors.surface, // Header background color
+        backgroundColor: themeColors.surface,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: themeColors.border,
     },
     pageTitle: {
         fontFamily: baseFontFamily,
-        fontSize: 17, // Matches Messages header title font size
+        fontSize: 17,
         fontWeight: 'bold',
         color: themeColors.text,
     },
     centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: themeColors.background },
     permissionDeniedContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.large, backgroundColor: themeColors.background },
     permissionDeniedText: { fontFamily: baseFontFamily, fontSize: 18, color: themeColors.textSecondary, textAlign: 'center', marginTop: SPACING.medium },
-    // NEW: Wrapper View for the content below the header
     contentWrapper: {
-        flex: 1, // Ensures this wrapper takes all remaining vertical space
-        backgroundColor: themeColors.background, // This is your main dark content background
+        flex: 1,
+        backgroundColor: themeColors.background,
     },
-    keyboardAvoidingView: { // This needs flex: 1 to ensure it fills available space
+    keyboardAvoidingView: {
         flex: 1,
     },
     scrollContent: {
-        flexGrow: 1, // Allows ScrollView content to expand
+        flexGrow: 1,
         paddingHorizontal: SPACING.medium,
-        paddingBottom: SPACING.xlarge, // Base padding for the scrollable content
-        // Background color is handled by contentWrapper now, or can be duplicated here if preferred.
-        // backgroundColor: themeColors.background, // Ensure this matches contentWrapper if contentWrapper is not used
-        paddingTop: SPACING.medium, // Initial padding below the header
+        paddingBottom: SPACING.xlarge,
+        paddingTop: SPACING.medium,
     },
     sectionCard: {
         width: '100%',

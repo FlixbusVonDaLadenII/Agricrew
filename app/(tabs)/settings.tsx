@@ -274,7 +274,7 @@ export default function ProfileScreen() {
                                     <Text style={styles.sectionTitle}>{t('profile.jobManagement')}</Text>
                                     <TouchableOpacity
                                         style={styles.manageJobsButton}
-                                        onPress={() => router.push('/my-jobs')}
+                                        onPress={() => router.push('/my-jobs')} // Corrected path
                                     >
                                         <MaterialCommunityIcons name="briefcase-edit-outline" size={24} color={themeColors.primary} />
                                         <Text style={styles.manageJobsButtonText}>{t('profile.myJobPostings')}</Text>

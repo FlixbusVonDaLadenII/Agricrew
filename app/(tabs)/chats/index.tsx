@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect } from 'react';
 import {
     StyleSheet,
     View,
@@ -8,13 +8,16 @@ import {
     ActivityIndicator,
     RefreshControl,
     Alert,
+    Image,
+    TextInput,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, useNavigation } from 'expo-router';
 import { getThemeColors } from '@/theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useUnreadChats } from '@/contexts/UnreadChatContext';
 
 const themeColors = getThemeColors('dark');
 
@@ -23,6 +26,7 @@ interface Chat {
     other_user_name: string;
     last_message: string;
     last_message_time: string;
+    other_user_avatar_url: string | null;
 }
 
 export default function ChatListScreen() {
@@ -31,18 +35,52 @@ export default function ChatListScreen() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { unreadChats } = useUnreadChats();
+    const navigation = useNavigation(); // Get navigation object
+
+    const [searchText, setSearchText] = useState('');
+    const [isEditMode, setIsEditMode] = useState(false);
+
+    // 1. Hide the default navigation header
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerShown: false,
+        });
+    }, [navigation]);
 
     const fetchChats = useCallback(async () => {
         const { data, error } = await supabase.rpc('get_user_chats');
-
         if (error) {
             console.error('Error fetching chats:', error);
-            Alert.alert("Error", t('chatList.alertError'));
+            Alert.alert("Error", "Could not fetch your chats.");
         } else if (data) {
             setChats(data);
         }
         setLoading(false);
-    }, [t]);
+    }, []);
+
+    const handleDeleteChat = async (chatIdToDelete: string) => {
+        Alert.alert(
+            "Delete Chat",
+            "Are you sure you want to permanently delete this chat?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        const { error } = await supabase.rpc('delete_chat', { chat_id_to_delete: chatIdToDelete });
+                        if (error) {
+                            Alert.alert("Error", "Could not delete the chat.");
+                            console.error("Delete error:", error);
+                        } else {
+                            setChats(currentChats => currentChats.filter(c => c.chat_id !== chatIdToDelete));
+                        }
+                    },
+                },
+            ]
+        );
+    };
 
     useFocusEffect(
         useCallback(() => {
@@ -53,72 +91,101 @@ export default function ChatListScreen() {
     useEffect(() => {
         const messageChannel = supabase
             .channel('public:messages:chat_list')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
-                () => {
-                    fetchChats();
-                }
-            )
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, fetchChats)
             .subscribe();
-
         const profileChannel = supabase
             .channel('public:profiles:chat_list')
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' },
-                () => {
-                    fetchChats();
-                }
-            )
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, fetchChats)
             .subscribe();
-
         return () => {
             supabase.removeChannel(messageChannel);
             supabase.removeChannel(profileChannel);
         };
     }, [fetchChats]);
 
-    const renderChatItem = ({ item }: { item: Chat }) => (
-        <TouchableOpacity
-            style={styles.chatItem}
-            onPress={() => router.push({
-                pathname: "/(tabs)/chats/[id]",
-                params: { id: item.chat_id }
-            })}
-        >
-            <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.other_user_name ? item.other_user_name.charAt(0).toUpperCase() : '?'}</Text>
-            </View>
-            <View style={styles.chatContent}>
-                <Text style={styles.userName} numberOfLines={1}>{item.other_user_name || 'Unknown User'}</Text>
-                <Text style={styles.lastMessage} numberOfLines={1}>{item.last_message || 'No messages yet.'}</Text>
-            </View>
-            {item.last_message_time && (
-                <Text style={styles.timestamp}>
-                    {new Date(item.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-            )}
-        </TouchableOpacity>
-    );
+    const renderChatItem = ({ item }: { item: Chat }) => {
+        const isUnread = unreadChats.has(item.chat_id);
 
-    if (loading && chats.length === 0) {
-        return <View style={styles.centered}><ActivityIndicator size="large" color={themeColors.primary} /></View>;
-    }
-
-    if (!loading && chats.length === 0) {
         return (
-            <View style={[styles.centered, { paddingTop: insets.top }]}>
-                <MaterialCommunityIcons name="message-text-outline" size={60} color={themeColors.textSecondary} />
-                <Text style={styles.emptyText}>{t('chatList.emptyTitle')}</Text>
-                <Text style={styles.emptySubText}>{t('chatList.emptySubtitle')}</Text>
+            <View style={styles.chatItemContainer}>
+                {isEditMode && (
+                    <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteChat(item.chat_id)}>
+                        <MaterialCommunityIcons name="minus-circle" size={24} color={themeColors.danger} />
+                    </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                    style={styles.chatItem}
+                    disabled={isEditMode}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/chats/[id]",
+                        params: { id: item.chat_id }
+                    })}
+                >
+                    {item.other_user_avatar_url ? (
+                        <Image source={{ uri: item.other_user_avatar_url }} style={styles.avatarImage} />
+                    ) : (
+                        <View style={styles.avatarPlaceholder}>
+                            <Text style={styles.avatarText}>{item.other_user_name ? item.other_user_name.charAt(0).toUpperCase() : '?'}</Text>
+                        </View>
+                    )}
+                    <View style={styles.chatContent}>
+                        <Text style={[styles.userName, isUnread && styles.unreadText]} numberOfLines={1}>{item.other_user_name || 'Unknown User'}</Text>
+                        <Text style={[styles.lastMessage, isUnread && styles.unreadText]} numberOfLines={1}>{item.last_message || 'No messages yet.'}</Text>
+                    </View>
+                    <View style={styles.metaContainer}>
+                        {item.last_message_time && (
+                            <Text style={styles.timestamp}>
+                                {new Date(item.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                        )}
+                        {isUnread && <View style={styles.unreadDot} />}
+                    </View>
+                </TouchableOpacity>
             </View>
         );
-    }
+    };
+
+    const filteredChats = chats.filter(chat =>
+        chat.other_user_name.toLowerCase().includes(searchText.toLowerCase())
+    );
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
+            {/* 2. Add a custom header view */}
+            <View style={styles.headerContainer}>
+                <Text style={styles.headerTitle}>Chats</Text>
+                <TouchableOpacity style={styles.editButton} onPress={() => setIsEditMode(!isEditMode)}>
+                    <Text style={styles.editButtonText}>{isEditMode ? "Done" : "Edit"}</Text>
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchContainer}>
+                <View style={styles.searchBar}>
+                    <MaterialCommunityIcons name="magnify" size={20} color={themeColors.textSecondary} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search Chats..."
+                        placeholderTextColor={themeColors.textHint}
+                        value={searchText}
+                        onChangeText={setSearchText}
+                    />
+                </View>
+            </View>
+
+            {loading && chats.length === 0 && <View style={styles.centered}><ActivityIndicator size="large" color={themeColors.primary} /></View>}
+
+            {!loading && filteredChats.length === 0 && (
+                <View style={styles.centered}>
+                    <MaterialCommunityIcons name="message-text-outline" size={60} color={themeColors.textSecondary} />
+                    <Text style={styles.emptyText}>{searchText ? "No chats found" : t('chatList.emptyTitle')}</Text>
+                    {!searchText && <Text style={styles.emptySubText}>{t('chatList.emptySubtitle')}</Text>}
+                </View>
+            )}
+
             <FlatList
-                data={chats}
+                data={filteredChats}
                 renderItem={renderChatItem}
                 keyExtractor={(item) => item.chat_id}
-                contentContainerStyle={{ paddingTop: 10 }}
                 refreshControl={
                     <RefreshControl refreshing={loading} onRefresh={fetchChats} tintColor={themeColors.primary} />
                 }
@@ -127,16 +194,55 @@ export default function ChatListScreen() {
     );
 }
 
+// 3. Add/Update styles
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: themeColors.background,
     },
+    headerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingTop: 10,
+        paddingBottom: 10,
+    },
+    headerTitle: {
+        fontSize: 34,
+        fontWeight: 'bold',
+        color: themeColors.text,
+    },
+    editButton: {
+        padding: 8,
+    },
+    editButtonText: {
+        color: themeColors.primary,
+        fontSize: 17,
+        fontWeight: '600',
+    },
+    searchContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 10,
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: themeColors.surfaceHighlight,
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        height: 40,
+    },
+    searchInput: {
+        flex: 1,
+        marginLeft: 8,
+        color: themeColors.text,
+        fontSize: 16,
+    },
     centered: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: themeColors.background,
         padding: 20,
     },
     emptyText: {
@@ -152,15 +258,32 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 8,
     },
+    chatItemContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: themeColors.background,
+        paddingLeft: 16, // Add left padding here
+    },
+    deleteButton: {
+        marginRight: 10, // Space between delete icon and chat item
+    },
     chatItem: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 12,
-        paddingHorizontal: 16,
+        paddingRight: 16,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: themeColors.border,
     },
-    avatar: {
+    avatarImage: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        marginRight: 15,
+        backgroundColor: themeColors.surfaceHighlight,
+    },
+    avatarPlaceholder: {
         width: 50,
         height: 50,
         borderRadius: 25,
@@ -187,10 +310,22 @@ const styles = StyleSheet.create({
         color: themeColors.textSecondary,
         fontSize: 14,
     },
+    metaContainer: {
+        alignItems: 'flex-end',
+    },
     timestamp: {
         color: themeColors.textSecondary,
         fontSize: 12,
-        alignSelf: 'flex-start',
-        marginLeft: 8,
+        marginBottom: 8,
+    },
+    unreadDot: {
+        backgroundColor: themeColors.primary,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    unreadText: {
+        color: themeColors.text,
+        fontWeight: 'bold',
     },
 });

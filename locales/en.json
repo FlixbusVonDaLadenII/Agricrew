@@ -7,9 +7,9 @@
     "yes": "Yes",
     "no": "No",
     "addPhoto": "Add Photo",
-    "separateWithCommas": "Separate with commas",
+    "language": "Language",
     "delete": "Delete",
-    "language": "language"
+    "separateWithCommas": "Separate with commas"
   },
   "roles": {
     "Arbeitnehmer": "Employee",
@@ -17,17 +17,16 @@
     "Rechnungsschreiber": "Administration"
   },
   "chatList": {
-    "emptyTitle": "No chats found",
-    "emptySubtitle": "Press apply now to start chatting"
+    "emptyTitle": "No Chats Found",
+    "emptySubtitle": "Click 'Apply Now' on a job to start a chat."
   },
   "profile": {
     "myProfile": "My Profile",
-    "success": "Success",
     "profile": "Profile",
-    "permissionDenied": "You need to be logged in to view your profile.",
+    "permissionDenied": "You must be logged in to view your profile.",
     "goToLogin": "Go to Login",
     "saveChanges": "Save Changes",
-    "logout": "Logout",
+    "logout": "Log Out",
     "role": "Role:",
     "companyDetails": "Company Details",
     "companyName": "Company Name",
@@ -35,15 +34,15 @@
     "aboutFarmPlaceholder": "Describe your farm, its history, and mission.",
     "farmSize": "Farm Size (Hectares)",
     "employeeCount": "Number of Employees",
-    "specialization": "Fields of Work / Specialization",
-    "specializationPlaceholder": "Dairy, Arable, Livestock...",
+    "specialization": "Work Areas / Specialization",
+    "specializationPlaceholder": "Dairy, crops, livestock...",
     "equipmentAndBenefits": "Equipment & Benefits",
     "machinery": "Main Machinery Brands",
     "machineryPlaceholder": "Fendt, John Deere, Claas...",
     "accommodation": "Accommodation Offered",
     "contactInfo": "Contact Information",
     "publicEmail": "Public Contact Email",
-    "streetAddress": "Street Address",
+    "streetAddress": "Street",
     "postalCode": "Postal Code",
     "city": "City",
     "country": "Country",
@@ -53,18 +52,39 @@
     "availability": "Availability",
     "myExperience": "My Experience",
     "profileUpdated": "Profile updated!",
-    "uploadFailed": "Upload Failed",
+    "uploadFailed": "Upload failed",
     "pictureUpdated": "Profile picture updated!",
     "reminderTitle": "Attract More Applicants!",
-    "reminderText": "Profiles with a full description, address, and farm details receive significantly more high-quality applications. Take a moment to enhance your listing.",
+    "reminderText": "Profiles with a full description, address, and farm details receive significantly more high-quality applications. Take a moment to improve your listing.",
     "remindMeLater": "Remind Me Later",
-    "illDoIt": "Okay, I'll Do It",
+    "illDoIt": "Okay, I'll do it",
     "jobManagement": "Job Management",
-    "myJobPostings": "My Job Postings"
+    "myJobPostings": "My Job Postings",
+    "success": "Success"
+  },
+  "myJobs": {
+    "pageTitle": "My Job Postings",
+    "notLoggedInTitle": "Access Denied",
+    "notLoggedInMessage": "You must be logged in to see your jobs.",
+    "fetchErrorTitle": "Error",
+    "fetchErrorMessage": "Could not load your job postings.",
+    "deleteConfirmTitle": "Confirm Deletion",
+    "deleteConfirmMessage": "Do you really want to delete this job posting? This action cannot be undone.",
+    "deleteErrorTitle": "Deletion Failed",
+    "deleteErrorMessage": "Could not delete the job.",
+    "deleteSuccessTitle": "Job Deleted",
+    "deleteSuccessMessage": "Job successfully deleted!",
+    "noJobsYet": "You have no job postings yet.",
+    "addJobPrompt": "Create your first job offer now!",
+    "addJobButton": "Add New Job",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "postedOn": "Posted on",
+    "at": "at"
   },
   "login": {
     "welcomeBack": "Welcome Back!",
-    "subtitle": "Log in to your Agricrew account",
+    "subtitle": "Log in to your Agri-Crew account",
     "emailLabel": "Email Address",
     "passwordLabel": "Password",
     "forgotPassword": "Forgot Password?",
@@ -75,12 +95,18 @@
     "alertEmailNotConfirmed": "Please check your email to confirm your account.",
     "alertInvalidCredentials": "Invalid email or password. Please try again."
   },
+  "tabs": {
+    "jobs": "Jobs",
+    "chats": "Chats",
+    "addJob": "Add Job",
+    "profile": "Profile"
+  },
   "register": {
-    "title": "Join Agricrew!",
+    "title": "Join Agri-Crew!",
     "subtitle": "Create your account to get started",
-    "iAmA": "I am an...",
+    "iAmA": "I am a...",
     "roleEmployee": "Employee",
-    "roleFarm": "Farm/Business",
+    "roleFarm": "Farm/Company",
     "roleAccountant": "Administration",
     "usernameLabel": "Username",
     "fullNameLabel": "Full Name / Company Name",
@@ -89,7 +115,7 @@
     "signUpButton": "Sign Up",
     "alreadyHaveAccount": "Already have an account?",
     "logInLink": "Log In",
-    "errorAllFields": "Please fill in all required fields and select your role.",
+    "errorAllFields": "Please fill out all required fields and select your role.",
     "errorUsername": "Please enter a username.",
     "errorFullName": "Please enter your full name or company name.",
     "successTitle": "Registration Successful",
@@ -97,8 +123,9 @@
   },
   "jobList": {
     "title": "Jobs",
-    "subtitle": "Your <1>Adventure</1> Starts Here!",
-    "searchPlaceholder": "Search jobs or farms...",
+    "urgent": "urgent",
+    "subtitle": "Your <1>Adventure</1> starts here!",
+    "searchPlaceholder": "Search for jobs or farms...",
     "applyNow": "Apply Now",
     "loading": "Loading jobs...",
     "noJobs": "No jobs found.",
@@ -108,7 +135,7 @@
     "licenses": "Required Licenses",
     "reset": "Reset",
     "applyFilters": "Apply Filters",
-    "salaryPerHour": "{{salary}}€/hr",
+    "salaryPerHour": "€{{salary}}/hr",
     "profile": {
       "about": "About the Farm",
       "contact": "Contact & Location",
@@ -128,47 +155,88 @@
     }
   },
   "filters": {
-    "countries": { "germany": "Germany", "austria": "Austria", "switzerland": "Switzerland" },
+    "countries": {
+      "germany": "Germany",
+      "austria": "Austria",
+      "switzerland": "Switzerland"
+    },
     "regions": {
       "germany": { "baden-wuerttemberg": "Baden-Württemberg", "bavaria": "Bavaria", "berlin": "Berlin", "brandenburg": "Brandenburg", "bremen": "Bremen", "hamburg": "Hamburg", "hesse": "Hesse", "lower-saxony": "Lower Saxony", "mecklenburg-vorpommern": "Mecklenburg-Vorpommern", "north-rhine-westphalia": "North Rhine-Westphalia", "rhineland-palatinate": "Rhineland-Palatinate", "saarland": "Saarland", "saxony": "Saxony", "saxony-anhalt": "Saxony-Anhalt", "schleswig-holstein": "Schleswig-Holstein", "thuringia": "Thuringia" },
       "austria": { "burgenland": "Burgenland", "carinthia": "Carinthia", "lower-austria": "Lower Austria", "upper-austria": "Upper Austria", "salzburg": "Salzburg", "styria": "Styria", "tyrol": "Tyrol", "vorarlberg": "Vorarlberg", "vienna": "Vienna" },
-      "switzerland": { "aargau": "Aargau", "appenzell-ausserrhoden": "Appenzell Ausserrhoden", "appenzell-innerrhoden": "Appenzell Innerrhoden", "basel-landschaft": "Basel-Landschaft", "basel-stadt": "Basel-Stadt", "bern": "Bern", "fribourg": "Fribourg", "geneva": "Geneva", "glarus": "Glarus", "grisons": "Grisons", "jura": "Jura", "lucerne": "Lucerne", "neuchâtel": "Neuchâtel", "nidwalden": "Nidwalden", "obwalden": "Obwalden", "schaffhausen": "Schaffhausen", "schwyz": "Schwyz", "solothurn": "Solothurn", "st-gallen": "St. Gallen", "thurgau": "Thurgau", "ticino": "Ticino", "uri": "Uri", "valais": "Valais", "vaud": "Vaud", "zug": "Zug", "zürich": "Zürich" }
+      "switzerland": { "aargau": "Aargau", "appenzell-ausserrhoden": "Appenzell Ausserrhoden", "appenzell-innerrhoden": "Appenzell Innerrhoden", "basel-landschaft": "Basel-Landschaft", "basel-stadt": "Basel-Stadt", "bern": "Bern", "fribourg": "Fribourg", "geneva": "Geneva", "glarus": "Glarus", "grisons": "Grisons", "jura": "Jura", "lucerne": "Lucerne", "neuchâtel": "Neuchâtel",
+        "nidwalden": "Nidwalden", "obwalden": "Obwalden", "schaffhausen": "Schaffhausen", "schwyz": "Schwyz", "solothurn": "Solothurn", "st-gallen": "St. Gallen", "thurgau": "Thurgau", "ticino": "Ticino", "uri": "Uri", "valais": "Valais", "vaud": "Vaud", "zug": "Zug", "zürich": "Zürich" }
     }
   },
   "chat": {
-    "inputPlaceholder": "Type a message...",
+    "inputPlaceholder": "Write a message...",
     "loadingProfileError": "Could not load profile.",
     "loadingChatError": "Could not load chat details.",
-    "sendMessageError": "Message failed to send. Please try again.",
-    "noExperience": "No experience listed."
+    "sendMessageError": "Could not send message. Please try again.",
+    "noExperience": "No experience provided."
   },
-  "tabs": {
-    "jobs": "Jobs",
-    "chats": "Chats",
-    "addJob": "Add Job",
-    "profile": "Profile"
+  "experiences": {
+    "landwirtschaft": "Agriculture",
+    "forstwirtschaft": "Forestry",
+    "gartenbau": "Horticulture",
+    "weinbau": "Viticulture",
+    "fischerei": "Fishery",
+    "tierhaltung": "Animal Husbandry",
+    "sonstiges": "Miscellaneous",
+    "buchhaltung": "Administration"
   },
-  "myJobs": {
-    "pageTitle": "My Job Postings",
-    "notLoggedInTitle": "Access Denied",
-    "notLoggedInMessage": "You need to be logged in to view your jobs.",
-    "fetchErrorTitle": "Error",
-    "fetchErrorMessage": "Could not load your job postings.",
-    "deleteConfirmTitle": "Confirm Deletion",
-    "deleteConfirmMessage": "Are you sure you want to delete this job posting? This action cannot be undone.",
-    "deleteErrorTitle": "Deletion Failed",
-    "deleteErrorMessage": "Could not delete job.",
-    "deleteSuccessTitle": "Job Deleted",
-    "deleteSuccessMessage": "Job posting successfully deleted!",
-    "noJobsYet": "You have no job postings yet.",
-    "addJobPrompt": "Create your first job offer now!",
-    "addJobButton": "Add New Job",
-    "statusActive": "Active",
-    "statusInactive": "Inactive",
-    "postedOn": "Posted on",
-    "at": "at"
+  "jobTypes": {
+    "fullTime": "Full-Time",
+    "partTime": "Part-Time",
+    "seasonal": "Seasonal",
+    "projectBased": "Project-Based",
+    "internship": "Internship"
   },
-  "experiences": { "soilCultivation": "Soil Cultivation", "sowing": "Sowing", "plantProtection": "Plant Protection", "slurrySpreading": "Slurry Spreading", "transportWork": "Transport Work", "truckTransport": "Truck Transport", "forageHarvesting": "Forage Harvesting", "combineHarvesting": "Combine Harvesting", "rootCropHarvesting": "Root Crop Harvesting", "greenForage": "Green Forage Technology", "animalHusbandry": "Animal Husbandry" },
-  "jobTypes": { "fullTime": "Full-time", "partTime": "Part-time", "seasonal": "Seasonal", "projectBased": "Project-based", "internship": "Internship" },
-  "addJob": { "permissionDenied": "This feature is for farms / companies only.", "pageTitle": "Create Job Listing", "sectionJobDetails": "Job Details", "labelJobTitle": "Job Title", "placeholderJobTitle": "e.g., Harvest Helper", "labelDescription": "Description", "placeholderDescription": "Detailed description of job tasks...", "sectionLocation": "Location", "labelCountry": "Country", "labelRegion": "Region/Federal State", "labelExactLocation": "Exact Location", "placeholderExactLocation": "e.g., 123 Farm Road, Farmville", "selectCountry": "Select Country...", "selectRegion": "Select Region...", "sectionCompensation": "Compensation & Type", "labelSalary": "Salary per Hour (€) (Optional)", "placeholderSalary": "e.g., 15.50", "labelJobType": "Job Type (Optional)", "sectionRequirements": "Requirements", "labelLicenses": "Driving Licenses (Optional)", "sectionStatus": "Status", "labelActive": "Make Job Active", "buttonPublish": "Publish Job", "modalSelectCountry": "Select Country", "modalSelectRegion": "Select Region", "modalSearchPlaceholder": "Search...", "modalNoResults": "No results found.", "modalCancel": "Cancel", "modalDone": "Done", "alertMissingFields": "Missing Fields", "alertMissingFieldsMessage": "Please fill in all required fields (*).", "alertInvalidSalary": "Invalid Salary", "alertInvalidSalaryMessage": "Please enter a valid number for salary.", "alertSuccess": "Success", "alertSuccessMessage": "Job added successfully!" }
+  "addJob": {
+    "permissionDenied": "This feature is only available for Farms / Companies.",
+    "pageTitle": "Create Job Offer",
+    "labelUrgent": "Urgent",
+    "sectionJobDetails": "Job Details",
+    "labelJobTitle": "Job Title",
+    "placeholderJobTitle": "e.g., Harvest Worker (m/f/d)",
+    "labelDescription": "Description",
+    "placeholderDescription": "Detailed description of the tasks...",
+    "sectionLocation": "Location",
+    "labelCountry": "Country",
+    "labelRegion": "Region/State",
+    "labelExactLocation": "Exact Location",
+    "placeholderExactLocation": "e.g., Main Street 123, 12345 City",
+    "selectCountry": "Select Country...",
+    "selectRegion": "Select Region...",
+    "sectionCompensation": "Compensation & Type",
+    "labelSalary": "Hourly Wage (€) (Optional)",
+    "placeholderSalary": "e.g., 15.50",
+    "labelJobType": "Employment Type (Optional)",
+    "sectionRequirements": "Requirements",
+    "labelLicenses": "Driver's Licenses (Optional)",
+    "sectionStatus": "Status",
+    "labelActive": "Activate Job",
+    "buttonPublish": "Publish Job",
+    "modalSelectCountry": "Select Country",
+    "modalSelectRegion": "Select Region",
+    "modalSearchPlaceholder": "Search...",
+    "modalNoResults": "No results found.",
+    "modalCancel": "Cancel",
+    "modalDone": "Done",
+    "alertMissingFields": "Missing Fields",
+    "alertMissingFieldsMessage": "Please fill all required fields (*).",
+    "alertInvalidSalary": "Invalid Salary",
+    "alertInvalidSalaryMessage": "Please enter a valid number for the salary.",
+    "alertSuccess": "Success",
+    "alertSuccessMessage": "Job added successfully!"
+  },
+  "experiences_list": {
+    "landwirtschaft": ["Arable Farming", "Plant Breeding", "Harvesting", "Machine Operation", "Soil Cultivation", "Fertilizing", "Plant Protection", "Seed Multiplication", "Field Vegetable Production", "Organic Farming"],
+    "forstwirtschaft": ["Logging", "Reforestation", "Forest Tending", "Forest Machine Operation", "Hunting", "Nature and Landscape Management", "Wood Processing", "Forest Protection", "Forest Road Construction", "Wildlife Management"],
+    "gartenbau": ["Ornamental Plant Cultivation", "Vegetable Production", "Fruit Growing", "Nursery", "Perennial Nursery", "Gardening and Landscaping", "Cemetery Gardening", "Retail Nursery", "Herb Cultivation", "Floristry"],
+    "weinbau": ["Vine Pruning", "Grape Harvesting", "Cellar Management", "Wine Marketing", "Oenology", "Vineyard Maintenance", "Grape Processing", "Bottling", "Wine Tasting", "Quality Management"],
+    "fischerei": ["Inland Fishing", "Coastal Fishing", "Deep Sea Fishing", "Aquaculture", "Fish Farming", "Net Mending", "Fish Processing", "Limnology", "Catch Quota Management", "Navigation"],
+    "tierhaltung": ["Cattle Farming", "Pig Farming", "Poultry Farming", "Sheep and Goat Farming", "Horse Breeding", "Dairy Farming", "Animal Care", "Stable Work", "Feeding Technology", "Animal Breeding"],
+    "sonstiges": ["Renewable Energy", "Direct Marketing", "Farm Tourism", "Agricultural Consulting", "Research and Development", "Quality Assurance", "Logistics", "Craftsmanship", "Teaching and Training", "Event Management"],
+    "buchhaltung": ["Tax Consulting", "Payroll Accounting", "Financial Accounting", "Controlling", "Annual Financial Statements", "Disposition", "Office Administration", "Bookkeeping", "Secretarial"]
+  }
 }
