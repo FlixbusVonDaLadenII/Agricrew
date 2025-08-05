@@ -1,81 +1,67 @@
-import { supabase } from '@/lib/supabase';
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import { supabase } from './supabase';
 import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
 
-// This handler determines how notifications are shown when the app is in the foreground
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        // FIX: Add the two missing properties to resolve the TypeScript error.
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
+export const savePushToken = async (userId: string) => {
+    console.log('--- [Push Notifications] Starting savePushToken process... ---');
 
-export async function registerForPushNotificationsAsync() {
-    let token;
-
-    if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-            name: 'default',
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 250, 250, 250],
-            lightColor: '#FF231F7C',
-        });
+    // 1. Check if a user ID was provided
+    if (!userId) {
+        console.error('[Push Notifications] Error: No user ID provided. Cannot save token.');
+        return;
     }
+    console.log(`[Push Notifications] User ID received: ${userId}`);
 
+    // 2. Check if it's a physical device
     if (!Device.isDevice) {
-        // Push notifications don't work on simulators
-        console.log('Push notifications are not supported on simulators.');
-        return null;
+        console.warn('[Push Notifications] Warning: Not running on a physical device. Push notifications are disabled.');
+        return;
     }
+    console.log('[Push Notifications] Physical device detected.');
 
+    // 3. Get notification permissions
+    console.log('[Push Notifications] Checking notification permissions...');
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
+        console.log('[Push Notifications] Permission not granted yet. Requesting permission...');
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
     }
 
+    // 4. Handle permission denial
     if (finalStatus !== 'granted') {
-        // User did not grant permission
-        console.log('User did not grant notification permissions.');
-        return null;
+        console.error(`[Push Notifications] Error: Permission not granted. Final status: ${finalStatus}`);
+        return;
     }
+    console.log('[Push Notifications] Permission granted.');
 
-    // Get the Expo Push Token
     try {
-        const pushToken = await Notifications.getExpoPushTokenAsync({
-            projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
-        });
-        token = pushToken.data;
-    } catch (e) {
-        console.error("Failed to get push token", e);
-        return null;
-    }
+        // 5. Get the push token
+        console.log('[Push Notifications] Fetching Expo push token...');
+        const token = (await Notifications.getExpoPushTokenAsync({
+            // You might need to add your projectId here if it's not in app.json
+            // projectId: 'your-expo-project-id',
+        })).data;
+        console.log(`[Push Notifications] Token fetched successfully: ${token}`);
 
-    return token;
-}
+        // 6. Save the token to the database
+        if (token) {
+            console.log(`[Push Notifications] Attempting to save token to database for user ${userId}...`);
+            const { error } = await supabase
+                .from('profiles')
+                .update({ push_token: token })
+                .eq('id', userId);
 
-
-export async function savePushToken(userId: string) {
-    const token = await registerForPushNotificationsAsync();
-
-    if (token) {
-        // Save the new token to the user's profile
-        const { error } = await supabase
-            .from('profiles')
-            .update({ push_token: token })
-            .eq('id', userId);
-
-        if (error) {
-            console.error('Failed to save push token:', error.message);
-        } else {
-            console.log('Push token saved successfully for user:', userId);
+            if (error) {
+                console.error('[Push Notifications] FATAL: Error saving push token to database:', error);
+            } else {
+                console.log('✅ [Push Notifications] SUCCESS: Token saved to database.');
+            }
         }
+    } catch (e) {
+        console.error('[Push Notifications] FATAL: An unexpected error occurred during the process.', e);
     }
-}
+};

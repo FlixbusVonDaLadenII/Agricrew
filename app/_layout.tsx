@@ -9,6 +9,7 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { getThemeColors } from '@/theme/colors';
 import { SessionProvider, useSession } from '@/lib/SessionProvider';
 import { UnreadChatProvider } from '@/contexts/UnreadChatContext';
+import { savePushToken } from '@/lib/notifications'; // 1. Import the function
 
 const currentTheme = 'dark';
 const themeColors = getThemeColors(currentTheme);
@@ -41,6 +42,13 @@ const InitialLayout = () => {
             }
         }
     }, [session, isLoading, segments, router]);
+
+    // 2. Add this new useEffect to handle push token registration
+    useEffect(() => {
+        if (session?.user?.id) {
+            savePushToken(session.user.id);
+        }
+    }, [session]);
 
     if (isLoading) {
         return (

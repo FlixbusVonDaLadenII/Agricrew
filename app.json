@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.agricrewapp.agricrew",
+      "buildNumber": "20",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "AgriCrew needs access to your photo library to allow you to select and upload your profile picture and other relevant images.",
         "NSCameraUsageDescription": "AgriCrew needs camera access to take new photos for your profile, job listings, or chat.",
