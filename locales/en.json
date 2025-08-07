@@ -122,6 +122,13 @@
     "successMessage": "Please check your email to confirm your account."
   },
   "jobList": {
+    "radius": "Radius",
+    "all": "All",
+    "locationPlaceholder": "Location",
+    "locationPermissionTitle": "Location Permission Required",
+    "locationPermissionMessage": "Please grant location access to find jobs near you.",
+    "locationError": "Could not get your location. Please check your settings.",
+    "location": "Location",
     "title": "Jobs",
     "urgent": "urgent",
     "subtitle": "Your <1>Adventure</1> starts here!",

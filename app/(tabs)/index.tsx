@@ -1,31 +1,25 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
-    StyleSheet,
-    View,
-    Text,
-    TextInput,
-    FlatList,
-    TouchableOpacity,
-    ActivityIndicator,
-    Modal,
-    ScrollView,
-    Platform,
-    Alert,
-    Animated,
-    Linking,
+    StyleSheet, View, Text, TextInput, FlatList, TouchableOpacity,
+    ActivityIndicator, Modal, ScrollView, Platform, Alert, Animated, Linking
 } from 'react-native';
+import '@/lib/notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getThemeColors, Theme } from '@/theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation, Trans } from 'react-i18next';
+import * as Location from 'expo-location';
+import Slider from '@react-native-community/slider';
+
 
 const currentTheme: Theme = 'dark';
 const themeColors = getThemeColors(currentTheme);
 const baseFontFamily = Platform.select({ ios: 'System', android: 'Roboto', default: 'System' });
 
 const DRIVING_LICENSES = ['B', 'BE', 'C', 'CE', 'C1', 'C1E', 'T', 'L'];
+
 
 // Interface definitions
 interface FarmProfile {
@@ -39,8 +33,11 @@ interface Job {
     required_licenses: string[]; salary_per_hour: number | null; job_type: string[] | null; is_active: boolean;
     is_urgent: boolean;
     farm: FarmProfile;
+    latitude: number | null;
+    longitude: number | null;
 }
 interface ChatCreationResult { chat_id: string; is_new: boolean; }
+interface UserLocation { latitude: number; longitude: number; }
 
 // Animation config values
 const SEARCH_BAR_HEIGHT = 48;
@@ -57,6 +54,26 @@ const COLLAPSED_HEADER_HEIGHT = COLLAPSED_TITLE_BAR_HEIGHT;
 const SCROLL_DISTANCE = INITIAL_HEADER_TITLE_AREA_HEIGHT - COLLAPSED_HEADER_HEIGHT;
 const TOTAL_HEADER_AND_SEARCH_BAR_HEIGHT_AT_TOP = INITIAL_HEADER_TITLE_AREA_HEIGHT + SEARCH_BAR_TOTAL_HEIGHT;
 
+
+// --- Haversine Distance Calculation Helper ---
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return d;
+}
+
+function deg2rad(deg: number): number {
+    return deg * (Math.PI / 180);
+}
+
+
 export default function IndexScreen() {
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
@@ -72,22 +89,55 @@ export default function IndexScreen() {
     const [isDetailsModalVisible, setDetailsModalVisible] = useState(false);
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
+    // Filter states for the modal UI
     const [selectedLicenses, setSelectedLicenses] = useState<string[]>([]);
     const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+    const [radius, setRadius] = useState<number>(200); // Max radius
 
+    // Applied filter states
     const [appliedLicenses, setAppliedLicenses] = useState<string[]>([]);
     const [appliedCountry, setAppliedCountry] = useState<string | null>(null);
     const [appliedRegions, setAppliedRegions] = useState<string[]>([]);
+    const [appliedRadius, setAppliedRadius] = useState<number>(200);
+    const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
 
     const scrollY = useRef(new Animated.Value(0)).current;
+
+    const getUserLocation = async (): Promise<UserLocation | null> => {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert(
+                t('jobList.locationPermissionTitle'),
+                t('jobList.locationPermissionMessage')
+            );
+            return null;
+        }
+
+        try {
+            let location = await Location.getCurrentPositionAsync({});
+            return {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+            };
+        } catch (error) {
+            Alert.alert('Error', t('jobList.locationError'));
+            console.error(error);
+            return null;
+        }
+    };
+
 
     const fetchAndFilterJobs = useCallback(async () => {
         setLoading(true);
         try {
             let query = supabase.from('jobs').select(`*, profiles (*)`).eq('is_active', true);
-            const { data, error } = await query;
 
+            if (appliedRadius < 200 && userLocation) {
+                query = query.not('latitude', 'is', null).not('longitude', 'is', null);
+            }
+
+            const { data, error } = await query;
             if (error) { throw error; }
 
             let fetchedJobs: Job[] = data.map((job: any) => ({
@@ -95,6 +145,8 @@ export default function IndexScreen() {
                 region: job.region, salary_per_hour: job.salary_per_hour, required_licenses: job.required_licenses || [],
                 job_type: job.job_type || [], is_active: job.is_active, is_urgent: job.is_urgent || false,
                 farm: job.profiles ? { ...job.profiles } : { id: '', full_name: 'Unknown Farm' },
+                latitude: job.latitude,
+                longitude: job.longitude,
             }));
 
             fetchedJobs = fetchedJobs.filter(job => {
@@ -105,11 +157,17 @@ export default function IndexScreen() {
                     job.location.toLowerCase().includes(searchLower);
 
                 const matchesLicenses = appliedLicenses.length === 0 || appliedLicenses.every(license => job.required_licenses.includes(license));
-
                 const matchesCountry = !appliedCountry || job.country === appliedCountry;
                 const matchesRegion = appliedRegions.length === 0 || appliedRegions.includes(job.region);
+                const matchesRadius = (() => {
+                    if (appliedRadius >= 200 || !userLocation || !job.latitude || !job.longitude) {
+                        return true;
+                    }
+                    const distance = getDistanceFromLatLonInKm(userLocation.latitude, userLocation.longitude, job.latitude, job.longitude);
+                    return distance <= appliedRadius;
+                })();
 
-                return matchesSearch && matchesLicenses && matchesCountry && matchesRegion;
+                return matchesSearch && matchesLicenses && matchesCountry && matchesRegion && matchesRadius;
             });
 
             fetchedJobs.sort((a, b) => {
@@ -126,7 +184,7 @@ export default function IndexScreen() {
         } finally {
             setLoading(false);
         }
-    }, [searchText, appliedLicenses, appliedCountry, appliedRegions, t]);
+    }, [searchText, appliedLicenses, appliedCountry, appliedRegions, appliedRadius, userLocation, t]);
 
     useFocusEffect(useCallback(() => { fetchAndFilterJobs(); }, [fetchAndFilterJobs]));
 
@@ -158,19 +216,33 @@ export default function IndexScreen() {
     };
     const toggleRegion = (regionKey: string) => setSelectedRegions(prev => prev.includes(regionKey) ? prev.filter(r => r !== regionKey) : [...prev, regionKey]);
     const toggleLicense = (license: string) => setSelectedLicenses(prev => prev.includes(license) ? prev.filter(l => l !== license) : [...prev, license]);
-    const applyFilters = () => {
+
+    const applyFilters = async () => {
+        let location: UserLocation | null = userLocation;
+        if (radius < 200 && !location) {
+            location = await getUserLocation();
+            if (location) {
+                setUserLocation(location);
+            }
+        }
+
         setAppliedLicenses(selectedLicenses);
         setAppliedCountry(selectedCountry);
         setAppliedRegions(selectedRegions);
+        setAppliedRadius(location ? radius : 200);
         setFilterModalVisible(false);
     };
+
     const resetFilters = () => {
         setSelectedLicenses([]);
         setSelectedCountry(null);
         setSelectedRegions([]);
+        setRadius(200);
         setAppliedLicenses([]);
         setAppliedCountry(null);
         setAppliedRegions([]);
+        setAppliedRadius(200);
+        setUserLocation(null);
         setFilterModalVisible(false);
     };
 
@@ -242,22 +314,46 @@ export default function IndexScreen() {
             <Modal animationType="slide" transparent={true} visible={isFilterModalVisible} onRequestClose={() => setFilterModalVisible(false)}>
                 <View style={styles.centeredView}>
                     <View style={styles.filterModalView}>
-                        <ScrollView showsVerticalScrollIndicator={false}>
+                        <ScrollView keyboardShouldPersistTaps="handled">
                             <Text style={styles.modalTitle}>{t('jobList.filterTitle')}</Text>
+
+                            <View style={styles.filterSection}>
+                                <View style={styles.radiusLabelContainer}>
+                                    <Text style={styles.filterLabel}>{t('jobList.radius')}</Text>
+                                    <Text style={styles.radiusValueText}>
+                                        {radius >= 200 ? t('jobList.all') : `< ${Math.round(radius)} km`}
+                                    </Text>
+                                </View>
+                                <Slider
+                                    style={{ width: '100%', height: 40 }}
+                                    minimumValue={0}
+                                    maximumValue={200}
+                                    step={5}
+                                    value={radius}
+                                    onValueChange={setRadius}
+                                    minimumTrackTintColor={themeColors.primary}
+                                    maximumTrackTintColor={themeColors.textHint}
+                                    thumbTintColor={themeColors.primary}
+                                />
+                            </View>
+
                             <View style={styles.filterSection}>
                                 <Text style={styles.filterLabel}>{t('jobList.country')}</Text>
-                                <View style={styles.countrySelectorContainer}>{countryKeys.map(key => (<TouchableOpacity key={key} onPress={() => handleSelectCountry(key)} style={[styles.countryButton, selectedCountry === key && styles.countryButtonSelected]}><Text style={[styles.countryButtonText, selectedCountry === key && styles.countryButtonTextSelected]}>{translatedCountries[key]}</Text></TouchableOpacity>))}</View>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    <View style={styles.countrySelectorContainer}>{countryKeys.map((key, index) => (<TouchableOpacity key={`country-${key}-${index}`} onPress={() => handleSelectCountry(key)} style={[styles.countryButton, selectedCountry === key && styles.countryButtonSelected]}><Text style={[styles.countryButtonText, selectedCountry === key && styles.countryButtonTextSelected]}>{translatedCountries[key]}</Text></TouchableOpacity>))}</View>
+                                </ScrollView>
                             </View>
-                            {selectedCountry && ( <View style={styles.filterSection}><Text style={styles.filterLabel}>{t('jobList.region')}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.licensesContainer}>{Object.entries(t(`filters.regions.${selectedCountry}`, { returnObjects: true }) as Record<string, string>).map(([key, value]) => { const isSelected = selectedRegions.includes(key); return (<TouchableOpacity key={key} onPress={() => toggleRegion(key)} style={[styles.licenseCheckbox, isSelected && styles.licenseCheckboxSelected]}><MaterialCommunityIcons name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={isSelected ? themeColors.primary : themeColors.textSecondary} /><Text style={styles.licenseText}>{value}</Text></TouchableOpacity>);})}</View></ScrollView></View>)}
+                            {selectedCountry && ( <View style={styles.filterSection}><Text style={styles.filterLabel}>{t('jobList.region')}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.licensesContainer}>{Object.entries(t(`filters.regions.${selectedCountry}`, { returnObjects: true }) as Record<string, string>).map(([key, value], index) => { const isSelected = selectedRegions.includes(key); return (<TouchableOpacity key={`region-${key}-${index}`} onPress={() => toggleRegion(key)} style={[styles.licenseCheckbox, isSelected && styles.licenseCheckboxSelected]}><MaterialCommunityIcons name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={isSelected ? themeColors.primary : themeColors.textSecondary} /><Text style={styles.licenseText}>{value}</Text></TouchableOpacity>);})}</View></ScrollView></View>)}
                             <View style={styles.filterSection}>
                                 <Text style={styles.filterLabel}>{t('jobList.licenses')}</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.licensesContainer}>{DRIVING_LICENSES.map(license => { const isSelected = selectedLicenses.includes(license); return (<TouchableOpacity key={license} onPress={() => toggleLicense(license)} style={[styles.licenseCheckbox, isSelected && styles.licenseCheckboxSelected]}><MaterialCommunityIcons name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={isSelected ? themeColors.primary : themeColors.textSecondary} /><Text style={styles.licenseText}>{license}</Text></TouchableOpacity>);})}</View></ScrollView>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.licensesContainer}>{DRIVING_LICENSES.map((license, index) => { return (<TouchableOpacity key={`license-${license}-${index}`} onPress={() => toggleLicense(license)} style={[styles.licenseCheckbox, selectedLicenses.includes(license) && styles.licenseCheckboxSelected]}><MaterialCommunityIcons name={selectedLicenses.includes(license) ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={selectedLicenses.includes(license) ? themeColors.primary : themeColors.textSecondary} /><Text style={styles.licenseText}>{license}</Text></TouchableOpacity>);})}</View></ScrollView>
+                            </View>
+
+                            <View style={styles.modalButtonsContainer}>
+                                <TouchableOpacity style={[styles.modalButton, styles.resetButton]} onPress={resetFilters}><Text style={styles.modalButtonText}>{t('jobList.reset')}</Text></TouchableOpacity>
+                                <TouchableOpacity style={styles.modalButton} onPress={applyFilters}><Text style={styles.modalButtonText}>{t('jobList.applyFilters')}</Text></TouchableOpacity>
                             </View>
                         </ScrollView>
-                        <View style={styles.modalButtonsContainer}>
-                            <TouchableOpacity style={[styles.modalButton, styles.resetButton]} onPress={resetFilters}><Text style={styles.modalButtonText}>{t('jobList.reset')}</Text></TouchableOpacity>
-                            <TouchableOpacity style={styles.modalButton} onPress={applyFilters}><Text style={styles.modalButtonText}>{t('jobList.applyFilters')}</Text></TouchableOpacity>
-                        </View>
                         <TouchableOpacity style={styles.closeModalButton} onPress={() => setFilterModalVisible(false)}><MaterialCommunityIcons name="close-circle-outline" size={30} color={themeColors.textSecondary} /></TouchableOpacity>
                     </View>
                 </View>
@@ -304,9 +400,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
     fixedTopSpacer: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 12 },
     animatedHeaderContainer: { position: 'absolute', left: 0, right: 0, backgroundColor: themeColors.background, overflow: 'hidden', zIndex: 11, paddingHorizontal: 20, justifyContent: 'center' },
-    headerTextContainer: {
-        // This is the only changed style
-    },
+    headerTextContainer: {},
     screenTitle: { fontFamily: baseFontFamily, fontWeight: 'bold', color: themeColors.text },
     pageSubtitle: { fontFamily: baseFontFamily, fontWeight: '600', color: themeColors.textSecondary, marginTop: 2 },
     headerAccentText: { color: themeColors.primary },
@@ -336,19 +430,19 @@ const styles = StyleSheet.create({
     modalTitle: { fontFamily: baseFontFamily, fontSize: 22, fontWeight: 'bold', color: themeColors.text, marginBottom: 25, textAlign: 'center' },
     filterSection: { width: '100%', marginBottom: 20 },
     filterLabel: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.text, marginBottom: 12, fontWeight: '500' },
-    countrySelectorContainer: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', marginBottom: 10 },
-    countryButton: { paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8, backgroundColor: themeColors.surfaceHighlight, borderWidth: 1, borderColor: themeColors.surfaceHighlight },
+    countrySelectorContainer: { flexDirection: 'row' },
+    countryButton: { marginRight: 10, paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8, backgroundColor: themeColors.surfaceHighlight, borderWidth: 1, borderColor: themeColors.surfaceHighlight },
     countryButtonSelected: { backgroundColor: themeColors.primary + '20', borderColor: themeColors.primary },
     countryButtonText: { color: themeColors.text, fontWeight: '600' },
     countryButtonTextSelected: { color: themeColors.primary },
-    licensesContainer: { flexDirection: 'row', },
+    licensesContainer: { flexDirection: 'row' },
     licenseCheckbox: { flexDirection: 'row', alignItems: 'center', backgroundColor: themeColors.surfaceHighlight, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, marginBottom: 8, marginRight: 8 },
     licenseCheckboxSelected: { backgroundColor: themeColors.primary + '20' },
     licenseText: { fontFamily: baseFontFamily, marginLeft: 8, fontSize: 15, color: themeColors.text },
     modalButtonsContainer: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 20 },
     modalButton: { backgroundColor: themeColors.primary, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10, flex: 1, alignItems: 'center', justifyContent: 'center' },
     resetButton: { backgroundColor: themeColors.surfaceHighlight, marginRight: 10 },
-    modalButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 17, fontWeight: '600', },
+    modalButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 17, fontWeight: '600' },
     closeModalButton: { position: 'absolute', top: 15, right: 15, zIndex: 1 },
     detailsModalView: { width: '90%', maxHeight: '85%', backgroundColor: themeColors.surface, borderRadius: 20, padding: 25, shadowColor: 'rgba(0,0,0,0.2)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.8, shadowRadius: 10, elevation: 6 },
     modalLocation: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, textAlign: 'center', marginBottom: 16, },
@@ -361,4 +455,16 @@ const styles = StyleSheet.create({
     profileInfoLabel: { fontFamily: baseFontFamily, fontSize: 12, color: themeColors.textSecondary, marginBottom: 2 },
     profileInfoValue: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.text, flexShrink: 1 },
     profileWebsite: { color: themeColors.primary, textDecorationLine: 'underline' },
+    radiusLabelContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    radiusValueText: {
+        fontFamily: baseFontFamily,
+        fontSize: 16,
+        fontWeight: '500',
+        color: themeColors.primary,
+    },
 });

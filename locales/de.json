@@ -104,6 +104,13 @@
   "register": { "title": "Tritt Agri-Crew bei!", "subtitle": "Erstelle dein Konto, um loszulegen", "iAmA": "Ich bin...", "roleEmployee": "Arbeitnehmer", "roleFarm": "Betrieb/Unternehmen", "roleAccountant": "Verwaltung", "usernameLabel": "Benutzername", "fullNameLabel": "Vollständiger Name / Firmenname", "emailLabel": "E-Mail-Adresse", "passwordLabel": "Passwort", "signUpButton": "Registrieren", "alreadyHaveAccount": "Hast du bereits ein Konto?", "logInLink": "Anmelden", "errorAllFields": "Bitte fülle alle Pflichtfelder aus und wähle deine Rolle.", "errorUsername": "Bitte gib einen Benutzernamen ein.",
     "errorFullName": "Bitte gib deinen vollständigen Namen oder Firmennamen ein.", "successTitle": "Registrierung erfolgreich", "successMessage": "Bitte überprüfe deine E-Mails, um dein Konto zu bestätigen." },
   "jobList": {
+    "radius": "Umkreis",
+    "all": "Alle",
+    "locationPlaceholder": "Ort",
+    "locationPermissionTitle": "Standortberechtigung erforderlich",
+    "locationPermissionMessage": "Bitte erteilen Sie den Standortzugriff, um Jobs in Ihrer Nähe zu finden.",
+    "locationError": "Ihr Standort konnte nicht abgerufen werden. Bitte überprüfen Sie Ihre Einstellungen.",
+    "location": "Ort",
     "title": "Jobs",
     "subtitle": "Dein <1>Abenteuer</1> beginnt hier!",
     "urgent": "Dringend",
