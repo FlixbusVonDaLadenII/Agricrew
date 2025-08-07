@@ -36,12 +36,11 @@ export default function ChatListScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { unreadChats } = useUnreadChats();
-    const navigation = useNavigation(); // Get navigation object
+    const navigation = useNavigation();
 
     const [searchText, setSearchText] = useState('');
     const [isEditMode, setIsEditMode] = useState(false);
 
-    // 1. Hide the default navigation header
     useLayoutEffect(() => {
         navigation.setOptions({
             headerShown: false,
@@ -52,26 +51,26 @@ export default function ChatListScreen() {
         const { data, error } = await supabase.rpc('get_user_chats');
         if (error) {
             console.error('Error fetching chats:', error);
-            Alert.alert("Error", "Could not fetch your chats.");
+            Alert.alert(t('common.error'), t('chatList.fetchError'));
         } else if (data) {
             setChats(data);
         }
         setLoading(false);
-    }, []);
+    }, [t]);
 
     const handleDeleteChat = async (chatIdToDelete: string) => {
         Alert.alert(
-            "Delete Chat",
-            "Are you sure you want to permanently delete this chat?",
+            t('chatList.deleteTitle'),
+            t('chatList.deleteMessage'),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t('common.cancel'), style: "cancel" },
                 {
-                    text: "Delete",
+                    text: t('common.delete'),
                     style: "destructive",
                     onPress: async () => {
                         const { error } = await supabase.rpc('delete_chat', { chat_id_to_delete: chatIdToDelete });
                         if (error) {
-                            Alert.alert("Error", "Could not delete the chat.");
+                            Alert.alert(t('common.error'), t('chatList.deleteError'));
                             console.error("Delete error:", error);
                         } else {
                             setChats(currentChats => currentChats.filter(c => c.chat_id !== chatIdToDelete));
@@ -129,8 +128,8 @@ export default function ChatListScreen() {
                         </View>
                     )}
                     <View style={styles.chatContent}>
-                        <Text style={[styles.userName, isUnread && styles.unreadText]} numberOfLines={1}>{item.other_user_name || 'Unknown User'}</Text>
-                        <Text style={[styles.lastMessage, isUnread && styles.unreadText]} numberOfLines={1}>{item.last_message || 'No messages yet.'}</Text>
+                        <Text style={[styles.userName, isUnread && styles.unreadText]} numberOfLines={1}>{item.other_user_name || t('chatList.unknownUser')}</Text>
+                        <Text style={[styles.lastMessage, isUnread && styles.unreadText]} numberOfLines={1}>{item.last_message || t('chatList.noMessages')}</Text>
                     </View>
                     <View style={styles.metaContainer}>
                         {item.last_message_time && (
@@ -151,11 +150,10 @@ export default function ChatListScreen() {
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
-            {/* 2. Add a custom header view */}
             <View style={styles.headerContainer}>
-                <Text style={styles.headerTitle}>Chats</Text>
+                <Text style={styles.headerTitle}>{t('chatList.title')}</Text>
                 <TouchableOpacity style={styles.editButton} onPress={() => setIsEditMode(!isEditMode)}>
-                    <Text style={styles.editButtonText}>{isEditMode ? "Done" : "Edit"}</Text>
+                    <Text style={styles.editButtonText}>{isEditMode ? t('chatList.done') : t('chatList.edit')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -164,7 +162,7 @@ export default function ChatListScreen() {
                     <MaterialCommunityIcons name="magnify" size={20} color={themeColors.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search Chats..."
+                        placeholder={t('chatList.searchPlaceholder')}
                         placeholderTextColor={themeColors.textHint}
                         value={searchText}
                         onChangeText={setSearchText}
@@ -177,7 +175,7 @@ export default function ChatListScreen() {
             {!loading && filteredChats.length === 0 && (
                 <View style={styles.centered}>
                     <MaterialCommunityIcons name="message-text-outline" size={60} color={themeColors.textSecondary} />
-                    <Text style={styles.emptyText}>{searchText ? "No chats found" : t('chatList.emptyTitle')}</Text>
+                    <Text style={styles.emptyText}>{searchText ? t('chatList.noResults') : t('chatList.emptyTitle')}</Text>
                     {!searchText && <Text style={styles.emptySubText}>{t('chatList.emptySubtitle')}</Text>}
                 </View>
             )}
@@ -194,7 +192,6 @@ export default function ChatListScreen() {
     );
 }
 
-// 3. Add/Update styles
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -262,10 +259,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: themeColors.background,
-        paddingLeft: 16, // Add left padding here
+        paddingLeft: 16,
     },
     deleteButton: {
-        marginRight: 10, // Space between delete icon and chat item
+        marginRight: 10,
     },
     chatItem: {
         flex: 1,

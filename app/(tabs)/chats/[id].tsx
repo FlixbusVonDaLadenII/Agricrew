@@ -48,6 +48,7 @@ interface Profile {
     experience?: string[];
     age?: number | null;
     availability?: string | null;
+    driving_licenses?: string[] | null; // Keep this in the interface
 }
 interface Message {
     id: string;
@@ -92,7 +93,6 @@ export default function ChatScreen() {
     const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
     const [isProfileLoading, setIsProfileLoading] = useState(false);
 
-    // Effect to mark the chat as read when the screen is focused
     useFocusEffect(
         useCallback(() => {
             if (chatId) {
@@ -228,7 +228,7 @@ export default function ChatScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={['bottom']}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={styles.keyboardAvoidingContainer}
@@ -272,6 +272,8 @@ export default function ChatScreen() {
                                             ? selectedProfile.full_name
                                             : selectedProfile.username || selectedProfile.full_name}
                                     </Text>
+
+                                    {/* MODIFIED: This entire block is updated */}
                                     {selectedProfile.role === 'Betrieb' ? (
                                         <>
                                             {selectedProfile.farm_description && (<><Text style={styles.profileSectionTitle}>{t('jobList.profile.about')}</Text><Text style={styles.profileDescription}>{selectedProfile.farm_description}</Text></>)}
@@ -287,6 +289,20 @@ export default function ChatScreen() {
                                             <Text style={styles.profileSectionTitle}>{t('profile.personalDetails')}</Text>
                                             <ProfileInfoRow icon="cake-variant-outline" label={t('profile.age')} value={selectedProfile.age} />
                                             <ProfileInfoRow icon="calendar-clock-outline" label={t('profile.availability')} value={selectedProfile.availability} />
+
+                                            {/* Correctly display driving licenses */}
+                                            <Text style={styles.profileSectionTitle}>{t('profile.drivingLicenses')}</Text>
+                                            {selectedProfile.driving_licenses && selectedProfile.driving_licenses.length > 0 ? (
+                                                <View style={styles.chipsContainer}>
+                                                    {selectedProfile.driving_licenses.map(license => (
+                                                        <View key={license} style={styles.chip}>
+                                                            <Text style={styles.chipText}>{license}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            ) : <Text style={styles.profileInfoValue}>{t('chat.noLicenses')}</Text>}
+
+                                            {/* Correctly display experiences */}
                                             <Text style={styles.profileSectionTitle}>{t('profile.myExperience')}</Text>
                                             {selectedProfile.experience && selectedProfile.experience.length > 0 ? (
                                                 <View style={styles.chipsContainer}>
@@ -335,7 +351,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 10,
         paddingTop: 10,
-        paddingBottom: 10,
+        paddingBottom: Platform.OS === 'ios' ? 20 : 10, // More padding for iOS notch area
         borderTopWidth: 1,
         borderTopColor: themeColors.border,
         backgroundColor: themeColors.background,

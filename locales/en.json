@@ -17,8 +17,17 @@
     "Rechnungsschreiber": "Administration"
   },
   "chatList": {
-    "emptyTitle": "No Chats Found",
-    "emptySubtitle": "Click 'Apply Now' on a job to start a chat."
+    "title": "Chats",
+    "edit": "Edit",
+    "done": "Done",
+    "searchPlaceholder": "Search Chats...",
+    "noResults": "No chats found",
+    "unknownUser": "Unknown User",
+    "noMessages": "No messages yet.",
+    "fetchError": "Could not fetch your chats.",
+    "deleteError": "Could not delete the chat.",
+    "deleteTitle": "Delete Chat",
+    "deleteMessage": "Are you sure you want to permanently delete this chat?"
   },
   "profile": {
     "myProfile": "My Profile",
@@ -27,6 +36,7 @@
     "goToLogin": "Go to Login",
     "saveChanges": "Save Changes",
     "logout": "Log Out",
+    "drivingLicenses": "Driving Licenses",
     "role": "Role:",
     "companyDetails": "Company Details",
     "companyName": "Company Name",
@@ -60,7 +70,12 @@
     "illDoIt": "Okay, I'll do it",
     "jobManagement": "Job Management",
     "myJobPostings": "My Job Postings",
-    "success": "Success"
+    "success": "Success",
+    "socialMedia": "Social Media",
+    "instagram": "Instagram",
+    "youtube": "YouTube",
+    "facebook": "Facebook",
+    "tiktok": "TikTok"
   },
   "myJobs": {
     "pageTitle": "My Job Postings",
@@ -124,6 +139,9 @@
   "jobList": {
     "radius": "Radius",
     "all": "All",
+    "jobType": "Job Type",
+    "filterByAccommodation": "Accommodation",
+    "accommodationOffered": "Accommodation Offered",
     "locationPlaceholder": "Location",
     "locationPermissionTitle": "Location Permission Required",
     "locationPermissionMessage": "Please grant location access to find jobs near you.",
@@ -179,24 +197,41 @@
     "loadingProfileError": "Could not load profile.",
     "loadingChatError": "Could not load chat details.",
     "sendMessageError": "Could not send message. Please try again.",
-    "noExperience": "No experience provided."
+    "noExperience": "No experience provided.",
+    "noLicenses": "No licenses listed."
   },
   "experiences": {
-    "landwirtschaft": "Agriculture",
-    "forstwirtschaft": "Forestry",
-    "gartenbau": "Horticulture",
-    "weinbau": "Viticulture",
-    "fischerei": "Fishery",
-    "tierhaltung": "Animal Husbandry",
-    "sonstiges": "Miscellaneous",
-    "buchhaltung": "Administration"
+    "tillage": "Tillage",
+    "sowing": "Sowing",
+    "cropProtection": "Crop Protection",
+    "fertilizing": "Fertilizing",
+    "slurrySpreading": "Slurry / Digestate Spreading",
+    "transport": "Transport Work",
+    "combineHarvester": "Combine Harvester",
+    "forageHarvester": "Forage Harvester",
+    "beetHarvester": "Beet Harvester",
+    "potatoHarvester": "Potato Harvester",
+    "animalHusbandry": "Animal Husbandry",
+    "harvester": "Harvester (Forestry)",
+    "forwarder": "Forwarder (Forestry)",
+    "woodChipper": "Wood Chipper",
+    "woodTransport": "Wood Transport",
+    "excavatorWork": "Excavator Work",
+    "fruitVegetableHarvest": "Fruit/Vegetable Harvest",
+    "viticulture": "Viticulture",
+    "fishery": "Fishery",
+    "officeOrganization": "Office Organization",
+    "accounting": "Accounting",
+    "payroll": "Payroll Accounting",
+    "disposition": "Dispatch"
   },
   "jobTypes": {
     "fullTime": "Full-Time",
     "partTime": "Part-Time",
     "seasonal": "Seasonal",
     "projectBased": "Project-Based",
-    "internship": "Internship"
+    "internship": "Internship",
+    "apprenticeship": "Apprenticeship"
   },
   "addJob": {
     "permissionDenied": "This feature is only available for Farms / Companies.",
@@ -204,6 +239,7 @@
     "labelUrgent": "Urgent",
     "sectionJobDetails": "Job Details",
     "labelJobTitle": "Job Title",
+    "labelOffersAccommodation": "Offers Accommodation",
     "placeholderJobTitle": "e.g., Harvest Worker (m/f/d)",
     "labelDescription": "Description",
     "placeholderDescription": "Detailed description of the tasks...",

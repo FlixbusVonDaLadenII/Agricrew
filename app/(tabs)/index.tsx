@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
     StyleSheet, View, Text, TextInput, FlatList, TouchableOpacity,
-    ActivityIndicator, Modal, ScrollView, Platform, Alert, Animated, Linking
+    ActivityIndicator, Modal, ScrollView, Platform, Alert, Animated, Linking, Switch
 } from 'react-native';
 import '@/lib/notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +32,7 @@ interface Job {
     id: string; title: string; description: string; location: string; country: string; region: string;
     required_licenses: string[]; salary_per_hour: number | null; job_type: string[] | null; is_active: boolean;
     is_urgent: boolean;
+    offers_accommodation: boolean;
     farm: FarmProfile;
     latitude: number | null;
     longitude: number | null;
@@ -82,6 +83,10 @@ export default function IndexScreen() {
     const translatedCountries = t('filters.countries', { returnObjects: true }) as Record<string, string>;
     const countryKeys = Object.keys(translatedCountries);
 
+    // ADDED: Get job types from translation files
+    const jobTypesOptions = t('jobTypes', { returnObjects: true }) as Record<string, string>;
+    const jobTypeKeys = Object.keys(jobTypesOptions);
+
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchText, setSearchText] = useState('');
@@ -93,13 +98,17 @@ export default function IndexScreen() {
     const [selectedLicenses, setSelectedLicenses] = useState<string[]>([]);
     const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-    const [radius, setRadius] = useState<number>(200); // Max radius
+    const [radius, setRadius] = useState<number>(200);
+    const [offersAccommodation, setOffersAccommodation] = useState(false);
+    const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]); // ADDED
 
     // Applied filter states
     const [appliedLicenses, setAppliedLicenses] = useState<string[]>([]);
     const [appliedCountry, setAppliedCountry] = useState<string | null>(null);
     const [appliedRegions, setAppliedRegions] = useState<string[]>([]);
     const [appliedRadius, setAppliedRadius] = useState<number>(200);
+    const [appliedOffersAccommodation, setAppliedOffersAccommodation] = useState(false);
+    const [appliedJobTypes, setAppliedJobTypes] = useState<string[]>([]); // ADDED
     const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
 
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -128,6 +137,7 @@ export default function IndexScreen() {
     };
 
 
+    // MODIFIED: Added appliedJobTypes to dependency array and filter logic
     const fetchAndFilterJobs = useCallback(async () => {
         setLoading(true);
         try {
@@ -144,6 +154,7 @@ export default function IndexScreen() {
                 id: job.id, title: job.title, description: job.description, location: job.location, country: job.country,
                 region: job.region, salary_per_hour: job.salary_per_hour, required_licenses: job.required_licenses || [],
                 job_type: job.job_type || [], is_active: job.is_active, is_urgent: job.is_urgent || false,
+                offers_accommodation: job.offers_accommodation || false,
                 farm: job.profiles ? { ...job.profiles } : { id: '', full_name: 'Unknown Farm' },
                 latitude: job.latitude,
                 longitude: job.longitude,
@@ -159,6 +170,10 @@ export default function IndexScreen() {
                 const matchesLicenses = appliedLicenses.length === 0 || appliedLicenses.every(license => job.required_licenses.includes(license));
                 const matchesCountry = !appliedCountry || job.country === appliedCountry;
                 const matchesRegion = appliedRegions.length === 0 || appliedRegions.includes(job.region);
+                const matchesAccommodation = !appliedOffersAccommodation || job.offers_accommodation;
+                // ADDED: Logic for job type filter
+                const matchesJobTypes = appliedJobTypes.length === 0 || (job.job_type && appliedJobTypes.some(type => job.job_type!.includes(type)));
+
                 const matchesRadius = (() => {
                     if (appliedRadius >= 200 || !userLocation || !job.latitude || !job.longitude) {
                         return true;
@@ -167,7 +182,7 @@ export default function IndexScreen() {
                     return distance <= appliedRadius;
                 })();
 
-                return matchesSearch && matchesLicenses && matchesCountry && matchesRegion && matchesRadius;
+                return matchesSearch && matchesLicenses && matchesCountry && matchesRegion && matchesRadius && matchesAccommodation && matchesJobTypes; // MODIFIED
             });
 
             fetchedJobs.sort((a, b) => {
@@ -184,7 +199,7 @@ export default function IndexScreen() {
         } finally {
             setLoading(false);
         }
-    }, [searchText, appliedLicenses, appliedCountry, appliedRegions, appliedRadius, userLocation, t]);
+    }, [searchText, appliedLicenses, appliedCountry, appliedRegions, appliedRadius, userLocation, appliedOffersAccommodation, appliedJobTypes, t]);
 
     useFocusEffect(useCallback(() => { fetchAndFilterJobs(); }, [fetchAndFilterJobs]));
 
@@ -216,7 +231,10 @@ export default function IndexScreen() {
     };
     const toggleRegion = (regionKey: string) => setSelectedRegions(prev => prev.includes(regionKey) ? prev.filter(r => r !== regionKey) : [...prev, regionKey]);
     const toggleLicense = (license: string) => setSelectedLicenses(prev => prev.includes(license) ? prev.filter(l => l !== license) : [...prev, license]);
+    // ADDED: Function to toggle job type filter
+    const toggleJobType = (typeKey: string) => setSelectedJobTypes(prev => prev.includes(typeKey) ? prev.filter(t => t !== typeKey) : [...prev, typeKey]);
 
+    // MODIFIED: Update applyFilters to include job types
     const applyFilters = async () => {
         let location: UserLocation | null = userLocation;
         if (radius < 200 && !location) {
@@ -230,18 +248,26 @@ export default function IndexScreen() {
         setAppliedCountry(selectedCountry);
         setAppliedRegions(selectedRegions);
         setAppliedRadius(location ? radius : 200);
+        setAppliedOffersAccommodation(offersAccommodation);
+        setAppliedJobTypes(selectedJobTypes); // ADDED
         setFilterModalVisible(false);
     };
 
+    // MODIFIED: Update resetFilters to include job types
     const resetFilters = () => {
         setSelectedLicenses([]);
         setSelectedCountry(null);
         setSelectedRegions([]);
         setRadius(200);
+        setOffersAccommodation(false);
+        setSelectedJobTypes([]); // ADDED
+
         setAppliedLicenses([]);
         setAppliedCountry(null);
         setAppliedRegions([]);
         setAppliedRadius(200);
+        setAppliedOffersAccommodation(false);
+        setAppliedJobTypes([]); // ADDED
         setUserLocation(null);
         setFilterModalVisible(false);
     };
@@ -267,6 +293,12 @@ export default function IndexScreen() {
                     <Text style={styles.jobCardDescription} numberOfLines={2}>{item.description}</Text>
                     <View style={styles.jobCardDetailRow}>
                         {salaryDisplay && <View style={styles.jobCardIconText}><MaterialCommunityIcons name="currency-eur" size={16} color={themeColors.textSecondary} /><Text style={styles.jobCardDetailText}>{salaryDisplay}</Text></View>}
+                        {item.offers_accommodation && (
+                            <View style={styles.jobCardIconText}>
+                                <MaterialCommunityIcons name="home-outline" size={16} color={themeColors.textSecondary} />
+                                <Text style={styles.jobCardDetailText}>{t('jobList.accommodationOffered')}</Text>
+                            </View>
+                        )}
                         {translatedJobTypes && <View style={styles.jobCardIconText}><MaterialCommunityIcons name="briefcase-outline" size={16} color={themeColors.textSecondary} /><Text style={styles.jobCardDetailText}>{translatedJobTypes}</Text></View>}
                         {item.required_licenses.length > 0 && <View style={styles.jobCardIconText}><MaterialCommunityIcons name="card-account-details-outline" size={16} color={themeColors.textSecondary} /><Text style={styles.jobCardDetailText}>{item.required_licenses.join(', ')}</Text></View>}
                     </View>
@@ -337,6 +369,28 @@ export default function IndexScreen() {
                                 />
                             </View>
 
+                            {/* ADDED: Job Type Filter Section */}
+                            <View style={styles.filterSection}>
+                                <Text style={styles.filterLabel}>{t('jobList.jobType')}</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    <View style={styles.licensesContainer}>
+                                        {jobTypeKeys.map((key) => {
+                                            const isSelected = selectedJobTypes.includes(key);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={`job-type-${key}`}
+                                                    onPress={() => toggleJobType(key)}
+                                                    style={[styles.licenseCheckbox, isSelected && styles.licenseCheckboxSelected]}
+                                                >
+                                                    <MaterialCommunityIcons name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={isSelected ? themeColors.primary : themeColors.textSecondary} />
+                                                    <Text style={styles.licenseText}>{jobTypesOptions[key]}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </ScrollView>
+                            </View>
+
                             <View style={styles.filterSection}>
                                 <Text style={styles.filterLabel}>{t('jobList.country')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -347,6 +401,19 @@ export default function IndexScreen() {
                             <View style={styles.filterSection}>
                                 <Text style={styles.filterLabel}>{t('jobList.licenses')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.licensesContainer}>{DRIVING_LICENSES.map((license, index) => { return (<TouchableOpacity key={`license-${license}-${index}`} onPress={() => toggleLicense(license)} style={[styles.licenseCheckbox, selectedLicenses.includes(license) && styles.licenseCheckboxSelected]}><MaterialCommunityIcons name={selectedLicenses.includes(license) ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={selectedLicenses.includes(license) ? themeColors.primary : themeColors.textSecondary} /><Text style={styles.licenseText}>{license}</Text></TouchableOpacity>);})}</View></ScrollView>
+                            </View>
+
+                            <View style={styles.filterSection}>
+                                <View style={styles.filterSwitchRow}>
+                                    <Text style={styles.filterLabel}>{t('jobList.filterByAccommodation')}</Text>
+                                    <Switch
+                                        trackColor={{ false: themeColors.textHint, true: themeColors.primary + '80' }}
+                                        thumbColor={offersAccommodation ? themeColors.primary : themeColors.surfaceHighlight}
+                                        ios_backgroundColor={themeColors.textHint}
+                                        onValueChange={setOffersAccommodation}
+                                        value={offersAccommodation}
+                                    />
+                                </View>
                             </View>
 
                             <View style={styles.modalButtonsContainer}>
@@ -435,7 +502,7 @@ const styles = StyleSheet.create({
     countryButtonSelected: { backgroundColor: themeColors.primary + '20', borderColor: themeColors.primary },
     countryButtonText: { color: themeColors.text, fontWeight: '600' },
     countryButtonTextSelected: { color: themeColors.primary },
-    licensesContainer: { flexDirection: 'row' },
+    licensesContainer: { flexDirection: 'row', flexWrap: 'wrap' }, // MODIFIED: Added flexWrap
     licenseCheckbox: { flexDirection: 'row', alignItems: 'center', backgroundColor: themeColors.surfaceHighlight, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, marginBottom: 8, marginRight: 8 },
     licenseCheckboxSelected: { backgroundColor: themeColors.primary + '20' },
     licenseText: { fontFamily: baseFontFamily, marginLeft: 8, fontSize: 15, color: themeColors.text },
@@ -466,5 +533,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
         color: themeColors.primary,
+    },
+    filterSwitchRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
 });

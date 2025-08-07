@@ -53,6 +53,7 @@ export default function AddJobScreen() {
     const [jobTypes, setJobTypes] = useState<string[]>([]);
     const [isActive, setIsActive] = useState(true);
     const [isUrgent, setIsUrgent] = useState(false);
+    const [offersAccommodation, setOffersAccommodation] = useState(false); // ADDED: State for accommodation
 
     // Autocomplete States
     const [locationSuggestions, setLocationSuggestions] = useState<LocationIQSuggestion[]>([]);
@@ -156,6 +157,7 @@ export default function AddJobScreen() {
             salaryToInsert = parsedSalary;
         }
 
+        // MODIFIED: Add offers_accommodation to the insert object
         const { error } = await supabase.from('jobs').insert({
             title, description, location, country, region,
             salary_per_hour: salaryToInsert,
@@ -163,6 +165,7 @@ export default function AddJobScreen() {
             job_type: jobTypes,
             is_active: isActive,
             is_urgent: isUrgent,
+            offers_accommodation: offersAccommodation, // ADDED
             farm_id: session!.user.id,
             latitude: selectedLocationCoords.lat,
             longitude: selectedLocationCoords.lng,
@@ -176,6 +179,7 @@ export default function AddJobScreen() {
             setTitle(''); setDescription(''); setLocation('');
             setCountry(countryKeys[0]); setRegion(''); setSalaryPerHour('');
             setSelectedLicenses([]); setJobTypes([]); setIsActive(true); setIsUrgent(false);
+            setOffersAccommodation(false); // ADDED: Reset state on success
             setSelectedLocationCoords(null);
             router.replace('/(tabs)');
         }
@@ -217,6 +221,7 @@ export default function AddJobScreen() {
             <View style={styles.header}><Text style={styles.pageTitle}>{t('addJob.pageTitle')}</Text></View>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardAvoidingView}>
                 <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+                    {/* Job Details Section */}
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>{t('addJob.sectionJobDetails')}</Text>
                         <Text style={styles.label}>{t('addJob.labelJobTitle')} <Text style={styles.requiredIndicator}>*</Text></Text>
@@ -225,6 +230,7 @@ export default function AddJobScreen() {
                         <TextInput style={[styles.input, styles.textArea]} placeholder={t('addJob.placeholderDescription')} placeholderTextColor={themeColors.textHint} multiline value={description} onChangeText={setDescription} />
                     </View>
 
+                    {/* Location Section */}
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>{t('addJob.sectionLocation')}</Text>
                         <Text style={styles.label}>{t('addJob.labelCountry')} <Text style={styles.requiredIndicator}>*</Text></Text>
@@ -243,12 +249,11 @@ export default function AddJobScreen() {
                                 setSelectedLocationCoords(null);
                             }}
                         />
-                        {/* FIX: Suggestions FlatList is now INSIDE the ScrollView */}
                         {locationSuggestions.length > 0 && (
                             <FlatList
                                 data={locationSuggestions}
                                 keyExtractor={(item) => item.place_id}
-                                scrollEnabled={false} // Important for nested lists
+                                scrollEnabled={false}
                                 style={styles.suggestionsList}
                                 renderItem={({ item }) => (
                                     <TouchableOpacity onPress={() => onLocationSuggestionSelect(item)} style={styles.suggestionItem}>
@@ -259,6 +264,7 @@ export default function AddJobScreen() {
                         )}
                     </View>
 
+                    {/* Compensation Section */}
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>{t('addJob.sectionCompensation')}</Text>
                         <Text style={styles.label}>{t('addJob.labelSalary')}</Text>
@@ -267,16 +273,28 @@ export default function AddJobScreen() {
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.jobTypeScrollContainer}>{jobTypeKeys.map((key, index) => { return ( <TouchableOpacity key={`job-type-${key}-${index}`} style={[styles.jobTypeButton, jobTypes.includes(key) && styles.jobTypeButtonSelected]} onPress={() => toggleJobType(key)}><Text style={[styles.jobTypeText, jobTypes.includes(key) && styles.jobTypeTextSelected]}>{jobTypesOptions[key]}</Text></TouchableOpacity> );})}</ScrollView>
                     </View>
 
+                    {/* Requirements Section */}
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>{t('addJob.sectionRequirements')}</Text>
                         <Text style={styles.label}>{t('addJob.labelLicenses')}</Text>
                         <View style={styles.licensesContainer}>{DRIVING_LICENSES.map((license, index) => (<TouchableOpacity key={`license-${license}-${index}`} style={[styles.licenseCheckbox, selectedLicenses.includes(license) && styles.licenseCheckboxSelected]} onPress={() => toggleLicense(license)}><Text style={[styles.licenseText, selectedLicenses.includes(license) && styles.licenseTextSelected]}>{license}</Text></TouchableOpacity>))}</View>
                     </View>
 
+                    {/* MODIFIED: Added accommodation switch */}
                     <View style={styles.sectionCard}>
                         <Text style={styles.sectionTitle}>{t('addJob.sectionStatus')}</Text>
                         <View style={styles.toggleRow}><Text style={styles.label}>{t('addJob.labelActive')}</Text><Switch trackColor={{ false: themeColors.textSecondary, true: themeColors.primary + '80' }} thumbColor={isActive ? themeColors.primary : themeColors.textSecondary} onValueChange={setIsActive} value={isActive} /></View>
                         <View style={styles.toggleRow}><Text style={styles.label}>{t('addJob.labelUrgent')}</Text><Switch trackColor={{ false: themeColors.textSecondary, true: themeColors.primary + '80' }} thumbColor={isUrgent ? themeColors.primary : themeColors.textSecondary} onValueChange={setIsUrgent} value={isUrgent} /></View>
+                        {/* ADDED: Accommodation toggle row */}
+                        <View style={styles.toggleRow}>
+                            <Text style={styles.label}>{t('addJob.labelOffersAccommodation')}</Text>
+                            <Switch
+                                trackColor={{ false: themeColors.textSecondary, true: themeColors.primary + '80' }}
+                                thumbColor={offersAccommodation ? themeColors.primary : themeColors.textSecondary}
+                                onValueChange={setOffersAccommodation}
+                                value={offersAccommodation}
+                            />
+                        </View>
                     </View>
 
                     <TouchableOpacity style={styles.submitButton} onPress={handleAddJob} disabled={submitting}>{submitting ? <ActivityIndicator color={themeColors.background} /> : <Text style={styles.submitButtonText}>{t('addJob.buttonPublish')}</Text>}</TouchableOpacity>
@@ -290,6 +308,7 @@ export default function AddJobScreen() {
     );
 }
 
+// Styles remain the same
 const SPACING = { xsmall: 4, small: 8, medium: 16, large: 24, xlarge: 32 };
 const styles = StyleSheet.create({
     safeAreaContainer: { flex: 1, backgroundColor: themeColors.surface },
@@ -335,7 +354,7 @@ const styles = StyleSheet.create({
     jobTypeButtonSelected: { borderColor: themeColors.primary, backgroundColor: themeColors.primary },
     jobTypeText: { fontFamily: baseFontFamily, color: themeColors.text, fontSize: 15 },
     jobTypeTextSelected: { color: themeColors.background, fontWeight: 'bold' },
-    toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: SPACING.small },
+    toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: SPACING.small, marginBottom: SPACING.small }, // Added marginBottom
     submitButton: { backgroundColor: themeColors.primary, paddingVertical: 18, borderRadius: 15, alignItems: 'center', marginTop: SPACING.xlarge, shadowColor: themeColors.primaryDark, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 },
     submitButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 19, fontWeight: 'bold' },
     suggestionsList: {
