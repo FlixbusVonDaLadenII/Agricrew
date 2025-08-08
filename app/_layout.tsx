@@ -1,20 +1,16 @@
-if (typeof globalThis.structuredClone !== 'function') {
-    globalThis.structuredClone = (obj: any) => JSON.parse(JSON.stringify(obj));
-}
-
 import '../i18n';
+import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { getThemeColors } from '@/theme/colors';
 import { SessionProvider, useSession } from '@/lib/SessionProvider';
 import { UnreadChatProvider } from '@/contexts/UnreadChatContext';
-import { savePushToken } from '@/lib/notifications'; // 1. Import the function
+import { savePushToken } from '@/lib/notifications';
+import * as Notifications from 'expo-notifications'; // ADDED: Import notifications
 
-const currentTheme = 'dark';
-const themeColors = getThemeColors(currentTheme);
+const themeColors = getThemeColors('dark');
 
-// This component decides whether to show the login screens or the main app tabs
+// This component handles the core navigation logic
 const InitialLayout = () => {
     const { session, isLoading } = useSession();
     const router = useRouter();
@@ -22,33 +18,41 @@ const InitialLayout = () => {
 
     useEffect(() => {
         if (isLoading) return;
-
-        const inTabsGroup = segments[0] === '(tabs)';
-        const inAuthGroup = segments[0] === '(auth)';
-        const isMyJobsScreen = segments[0] === 'my-jobs';
-        const isEditJobScreen = segments[0] === 'edit-job';
-
-        if (session) {
-            // User is signed in
-            if (!inTabsGroup && !isMyJobsScreen && !isEditJobScreen) {
-                // If not in tabs or allowed screens, redirect to tabs
-                router.replace('/(tabs)');
-            }
-        } else if (!session) {
-            // User is signed out
-            if (!inAuthGroup) {
-                // If not in auth, redirect to login
-                router.replace('/(auth)/login');
-            }
+        const inApp = segments[0] === '(tabs)' || segments[0] === 'my-jobs' || segments[0] === 'edit-job';
+        if (session && !inApp) {
+            router.replace('/(tabs)');
+        } else if (!session && inApp) {
+            router.replace('/(auth)/login');
         }
     }, [session, isLoading, segments, router]);
 
-    // 2. Add this new useEffect to handle push token registration
     useEffect(() => {
         if (session?.user?.id) {
             savePushToken(session.user.id);
         }
     }, [session]);
+
+    // ADDED: This new useEffect sets up the notification tap listener
+    useEffect(() => {
+        // This listener is fired whenever a user taps on or interacts with a notification
+        const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+            const data = response.notification.request.content.data;
+            const chatId = data?.chat_id as string | undefined;
+
+            // If the notification has a chat_id, navigate to that chat screen
+            if (chatId) {
+                router.push({
+                    pathname: '/(tabs)/chats/[id]',
+                    params: { id: chatId },
+                });
+            }
+        });
+
+        // Cleanup function to remove the listener when the component unmounts
+        return () => {
+            subscription.remove();
+        };
+    }, [router]); // Dependency array with router
 
     if (isLoading) {
         return (
@@ -68,7 +72,7 @@ const InitialLayout = () => {
     );
 }
 
-// This is the main export. It wraps the entire app in the necessary providers.
+// The root component that wraps the entire app in providers
 export default function RootLayout() {
     return (
         <SessionProvider>
@@ -84,6 +88,6 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: themeColors.background ?? '#000',
+        backgroundColor: themeColors.background,
     },
 });

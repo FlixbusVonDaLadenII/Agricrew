@@ -25,6 +25,7 @@ import { useUnreadChats } from '@/contexts/UnreadChatContext';
 
 const themeColors = getThemeColors('dark');
 const baseFontFamily = Platform.OS === 'ios' ? 'System' : 'Roboto';
+const PAGE_SIZE = 30;
 
 // --- Interfaces ---
 interface Profile {
@@ -48,7 +49,7 @@ interface Profile {
     experience?: string[];
     age?: number | null;
     availability?: string | null;
-    driving_licenses?: string[] | null; // Keep this in the interface
+    driving_licenses?: string[] | null;
 }
 interface Message {
     id: string;
@@ -93,6 +94,9 @@ export default function ChatScreen() {
     const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
     const [isProfileLoading, setIsProfileLoading] = useState(false);
 
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMoreMessages, setHasMoreMessages] = useState(true);
+
     useFocusEffect(
         useCallback(() => {
             if (chatId) {
@@ -107,7 +111,7 @@ export default function ChatScreen() {
         setProfileModalVisible(true);
         const { data, error } = await supabase.from('profiles').select('*').eq('id', otherUser.user_id).single();
         if (error) {
-            Alert.alert("Error", t('chat.loadingProfileError'));
+            Alert.alert(t('common.error'), t('chat.loadingProfileError'));
             setProfileModalVisible(false);
         } else {
             setSelectedProfile(data as Profile);
@@ -118,7 +122,6 @@ export default function ChatScreen() {
     useEffect(() => {
         navigation.setOptions({
             headerBackTitleVisible: false,
-            headerBackTitle: '',
             headerTitle: () => (
                 <TouchableOpacity onPress={handleViewProfile} disabled={!otherUser} style={styles.headerTouchable}>
                     {otherUser?.avatar_url ? (
@@ -129,35 +132,50 @@ export default function ChatScreen() {
                         </View>
                     )}
                     <View style={styles.headerTitleContainer}>
-                        <Text style={styles.headerTitleText}>{otherUser?.full_name || 'Chat'}</Text>
+                        <Text style={styles.headerTitleText}>{otherUser?.full_name || t('chat.titleFallback')}</Text>
                         <MaterialCommunityIcons name="chevron-down" size={22} color={themeColors.text} style={styles.headerTitleIcon} />
                     </View>
                 </TouchableOpacity>
             )
         });
-    }, [navigation, otherUser, handleViewProfile]);
+    }, [navigation, otherUser, handleViewProfile, t]);
 
     useEffect(() => {
         const fetchData = async () => {
             if (!chatId) return;
             setLoading(true);
+            setHasMoreMessages(true);
             try {
                 const { data: { session: currentSession } } = await supabase.auth.getSession();
                 if (!currentSession) throw new Error("No active session");
                 setSession(currentSession);
-                const { data, error: participantsError } = await supabase.rpc('get_chat_participants', { chat_id_input: chatId });
+
+                const { data: participantsData, error: participantsError } = await supabase.rpc('get_chat_participants', { chat_id_input: chatId });
                 if (participantsError) throw participantsError;
-                const participants = data as Participant[];
+                const participants = participantsData as Participant[];
                 if (participants) {
                     const otherParticipant = participants.find(p => p.user_id !== currentSession.user.id);
                     if (otherParticipant) setOtherUser(otherParticipant);
                 }
-                const { data: messagesData, error: messagesError } = await supabase.from('messages').select('*').eq('chat_id', chatId).order('created_at', { ascending: true });
+
+                const { data: messagesData, error: messagesError } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .eq('chat_id', chatId)
+                    .order('created_at', { ascending: false })
+                    .range(0, PAGE_SIZE - 1);
+
                 if (messagesError) throw messagesError;
-                if (messagesData) setMessages(messagesData);
+                if (messagesData) {
+                    // MODIFIED: No longer need to reverse the array for an inverted list
+                    setMessages(messagesData);
+                    if (messagesData.length < PAGE_SIZE) {
+                        setHasMoreMessages(false);
+                    }
+                }
             } catch (error) {
                 console.error("Error fetching chat data:", error);
-                Alert.alert("Error", t('chat.loadingChatError'));
+                Alert.alert(t('common.error'), t('chat.loadingChatError'));
             } finally {
                 setLoading(false);
             }
@@ -167,10 +185,9 @@ export default function ChatScreen() {
 
     useEffect(() => {
         if (!chatId || !session?.user?.id) return;
+        // MODIFIED: For an inverted list, new messages should be added to the START of the array.
         const messageChannel = supabase.channel(`chat_${chatId}`).on<Message>('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
-            if (payload.new.sender_id !== session.user.id) {
-                setMessages(currentMessages => [...currentMessages, payload.new]);
-            }
+            setMessages(currentMessages => [payload.new, ...currentMessages]);
         }).subscribe();
         return () => { supabase.removeChannel(messageChannel); };
     }, [chatId, session]);
@@ -181,7 +198,7 @@ export default function ChatScreen() {
             .channel(`profile_update_${otherUser.user_id}`)
             .on<Profile>('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${otherUser.user_id}` },
                 (payload) => {
-                    const newName = payload.new.username || payload.new.full_name || 'Unknown User';
+                    const newName = payload.new.username || payload.new.full_name || t('chatList.unknownUser');
                     const newAvatar = payload.new.avatar_url || null;
                     setOtherUser(currentUser => ({ ...currentUser!, full_name: newName, avatar_url: newAvatar }));
                 }
@@ -190,20 +207,50 @@ export default function ChatScreen() {
         return () => {
             supabase.removeChannel(profileChannel);
         };
-    }, [otherUser]);
+    }, [otherUser, t]);
+
+    const loadMoreMessages = async () => {
+        if (loadingMore || !hasMoreMessages || !chatId) return;
+
+        setLoadingMore(true);
+        const currentMessageCount = messages.length;
+
+        const { data: newMessagesData, error } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('chat_id', chatId)
+            .order('created_at', { ascending: false })
+            .range(currentMessageCount, currentMessageCount + PAGE_SIZE - 1);
+
+        if (error) {
+            console.error('Error fetching more messages:', error);
+        } else if (newMessagesData) {
+            if (newMessagesData.length < PAGE_SIZE) {
+                setHasMoreMessages(false);
+            }
+            // MODIFIED: Append older messages to the end of the array. The inverted list handles the rest.
+            setMessages(prevMessages => [...prevMessages, ...newMessagesData]);
+        }
+        setLoadingMore(false);
+    };
 
     const handleSend = async () => {
         const messageContent = newMessage.trim();
         if (!messageContent || !session?.user || !chatId) return;
-        const optimisticMessage: Message = { id: `temp-${Date.now()}`, chat_id: chatId, content: messageContent, created_at: new Date().toISOString(), sender_id: session.user.id };
-        setMessages(currentMessages => [...currentMessages, optimisticMessage]);
+
+        // REMOVED: Optimistic update is tricky with real-time and inverted lists.
+        // We now rely on the subscription to add the message.
+        // const optimisticMessage: Message = { ... };
+        // setMessages(currentMessages => [optimisticMessage, ...currentMessages]);
+
         setNewMessage('');
         const { error } = await supabase.from('messages').insert({ chat_id: chatId, sender_id: session.user.id, content: messageContent });
+
         if (error) {
             console.error('Error sending message:', error);
-            setMessages(currentMessages => currentMessages.filter(msg => msg.id !== optimisticMessage.id));
+            // Since we removed optimistic update, we just need to alert the user.
             setNewMessage(messageContent);
-            Alert.alert("Error", t('chat.sendMessageError'));
+            Alert.alert(t('common.error'), t('chat.sendMessageError'));
         }
     };
 
@@ -241,8 +288,15 @@ export default function ChatScreen() {
                     keyExtractor={(item) => item.id}
                     style={styles.messageList}
                     contentContainerStyle={{ paddingTop: 10, paddingBottom: 5 }}
-                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                    onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                    // REMOVED: scrollToEnd is not needed for inverted lists
+                    // onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    // onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                    onEndReached={loadMoreMessages}
+                    onEndReachedThreshold={0.8}
+                    inverted
+                    ListFooterComponent={() => (
+                        loadingMore ? <ActivityIndicator style={{ marginVertical: 10 }} size="small" color={themeColors.primary} /> : null
+                    )}
                 />
                 <View style={styles.inputContainer}>
                     <TextInput style={styles.textInput} value={newMessage} onChangeText={setNewMessage} placeholder={t('chat.inputPlaceholder')} placeholderTextColor={themeColors.textHint} multiline />
@@ -273,7 +327,6 @@ export default function ChatScreen() {
                                             : selectedProfile.username || selectedProfile.full_name}
                                     </Text>
 
-                                    {/* MODIFIED: This entire block is updated */}
                                     {selectedProfile.role === 'Betrieb' ? (
                                         <>
                                             {selectedProfile.farm_description && (<><Text style={styles.profileSectionTitle}>{t('jobList.profile.about')}</Text><Text style={styles.profileDescription}>{selectedProfile.farm_description}</Text></>)}
@@ -289,8 +342,6 @@ export default function ChatScreen() {
                                             <Text style={styles.profileSectionTitle}>{t('profile.personalDetails')}</Text>
                                             <ProfileInfoRow icon="cake-variant-outline" label={t('profile.age')} value={selectedProfile.age} />
                                             <ProfileInfoRow icon="calendar-clock-outline" label={t('profile.availability')} value={selectedProfile.availability} />
-
-                                            {/* Correctly display driving licenses */}
                                             <Text style={styles.profileSectionTitle}>{t('profile.drivingLicenses')}</Text>
                                             {selectedProfile.driving_licenses && selectedProfile.driving_licenses.length > 0 ? (
                                                 <View style={styles.chipsContainer}>
@@ -301,8 +352,6 @@ export default function ChatScreen() {
                                                     ))}
                                                 </View>
                                             ) : <Text style={styles.profileInfoValue}>{t('chat.noLicenses')}</Text>}
-
-                                            {/* Correctly display experiences */}
                                             <Text style={styles.profileSectionTitle}>{t('profile.myExperience')}</Text>
                                             {selectedProfile.experience && selectedProfile.experience.length > 0 ? (
                                                 <View style={styles.chipsContainer}>
@@ -345,13 +394,14 @@ const styles = StyleSheet.create({
     messageList: {
         flex: 1,
         paddingHorizontal: 10,
+        transform: [{ scaleY: -1 }], // MODIFIED: Apply transform directly to the list
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 10,
         paddingTop: 10,
-        paddingBottom: Platform.OS === 'ios' ? 20 : 10, // More padding for iOS notch area
+        paddingBottom: Platform.OS === 'ios' ? 20 : 10,
         borderTopWidth: 1,
         borderTopColor: themeColors.border,
         backgroundColor: themeColors.background,
@@ -378,6 +428,7 @@ const styles = StyleSheet.create({
     messageRow: {
         flexDirection: 'row',
         marginVertical: 2,
+        // REMOVED: The transform is now on the list itself, not each row.
     },
     myMessageRow: {
         justifyContent: 'flex-end',

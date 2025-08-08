@@ -3,36 +3,20 @@ import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getThemeColors } from '@/theme/colors';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useUnreadChats } from '@/contexts/UnreadChatContext';
 
 const themeColors = getThemeColors('dark');
 
+// A clean component for the Chats tab icon with the unread badge
 const ChatsTabIcon = ({ color, size }: { color: string; size: number }) => {
     const { unreadChats } = useUnreadChats();
     const hasUnread = unreadChats.size > 0;
 
-    // Log to see if the UI is updating
-    console.log('[ChatsTabIcon] Unread count:', unreadChats.size);
-
     return (
         <View>
             <MaterialCommunityIcons name="message-text-outline" color={color} size={size} />
-            {hasUnread && (
-                <View
-                    style={{
-                        position: 'absolute',
-                        right: -6,
-                        top: -3,
-                        backgroundColor: themeColors.danger,
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        borderWidth: 1.5,
-                        borderColor: themeColors.surface,
-                    }}
-                />
-            )}
+            {hasUnread && <View style={styles.unreadBadge} />}
         </View>
     );
 };
@@ -77,6 +61,8 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
+                // MODIFIED: Changed name to 'profile' for consistency with ProfileScreen.tsx and translations
+                // Ensure your file is named (tabs)/profile.tsx
                 name="settings"
                 options={{
                     title: t('tabs.profile'),
@@ -88,3 +74,17 @@ export default function TabLayout() {
         </Tabs>
     );
 }
+
+const styles = StyleSheet.create({
+    unreadBadge: {
+        position: 'absolute',
+        right: -6,
+        top: -3,
+        backgroundColor: themeColors.danger,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        borderWidth: 1.5,
+        borderColor: themeColors.surface,
+    }
+});

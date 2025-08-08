@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity, ActivityIndicator, SafeAreaView,
     Platform, Alert, Image, ScrollView, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Switch, Modal, StatusBar,
-    LayoutAnimation, UIManager // ADDED for animation
+    LayoutAnimation, UIManager, FlatList
 } from 'react-native';
 import { getThemeColors, Theme } from '@/theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,7 +14,6 @@ import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
-// ADDED: Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -23,10 +22,16 @@ const currentTheme: Theme = 'dark';
 const themeColors = getThemeColors(currentTheme);
 const baseFontFamily = Platform.select({ ios: 'System', android: 'Roboto', default: 'System' });
 
-// ADDED: List of driving licenses
 const DRIVING_LICENSES = ['B', 'BE', 'C', 'CE', 'C1', 'C1E', 'T', 'L'];
+const LOCATIONIQ_API_KEY = 'pk.bab6acfa1b6e45c75d826424ef472993'; // Your LocationIQ Key
 
-// MODIFIED: Added driving_licenses to the Profile interface
+interface LocationIQSuggestion {
+    place_id: string;
+    display_name: string;
+    lat: string;
+    lon: string;
+}
+
 interface Profile {
     id: string; email?: string; full_name: string | null; username: string | null; avatar_url: string | null;
     role: 'Arbeitnehmer' | 'Betrieb' | 'Rechnungsschreiber' | null;
@@ -39,20 +44,16 @@ interface Profile {
     youtube_url?: string | null;
     facebook_url?: string | null;
     tiktok_url?: string | null;
-    driving_licenses?: string[] | null; // ADDED
+    driving_licenses?: string[] | null;
+    farm_location_address?: string | null;
+    farm_latitude?: number | null;
+    farm_longitude?: number | null;
 }
 
 const ORDERED_EXPERIENCE_KEYS = [
     'tillage', 'sowing', 'cropProtection', 'fertilizing', 'slurrySpreading', 'transport', 'combineHarvester', 'forageHarvester', 'beetHarvester', 'potatoHarvester',
-    'SEPARATOR_1',
-    'animalHusbandry',
-    'SEPARATOR_2',
-    'harvester', 'forwarder', 'woodChipper', 'woodTransport', 'excavatorWork',
-    'SEPARATOR_3',
-    'fruitVegetableHarvest', 'viticulture',
-    'SEPARATOR_4',
-    'fishery',
-    'SEPARATOR_5',
+    'SEPARATOR_1', 'animalHusbandry', 'SEPARATOR_2', 'harvester', 'forwarder', 'woodChipper', 'woodTransport', 'excavatorWork',
+    'SEPARATOR_3', 'fruitVegetableHarvest', 'viticulture', 'SEPARATOR_4', 'fishery', 'SEPARATOR_5',
     'officeOrganization', 'accounting', 'payroll', 'disposition'
 ];
 
@@ -74,10 +75,6 @@ export default function ProfileScreen() {
     const [website, setWebsite] = useState('');
     const [farmDescription, setFarmDescription] = useState('');
     const [contactEmail, setContactEmail] = useState('');
-    const [addressStreet, setAddressStreet] = useState('');
-    const [addressCity, setAddressCity] = useState('');
-    const [addressPostalCode, setAddressPostalCode] = useState('');
-    const [addressCountry, setAddressCountry] = useState('');
     const [farmSpecialization, setFarmSpecialization] = useState('');
     const [farmSize, setFarmSize] = useState('');
     const [employeeCount, setEmployeeCount] = useState('');
@@ -90,11 +87,47 @@ export default function ProfileScreen() {
     const [youtubeUrl, setYoutubeUrl] = useState('');
     const [facebookUrl, setFacebookUrl] = useState('');
     const [tiktokUrl, setTiktokUrl] = useState('');
-    const [drivingLicenses, setDrivingLicenses] = useState<string[]>([]); // ADDED
+    const [drivingLicenses, setDrivingLicenses] = useState<string[]>([]);
+    const [farmLocationAddress, setFarmLocationAddress] = useState('');
+    const [farmLocationCoords, setFarmLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [locationSuggestions, setLocationSuggestions] = useState<LocationIQSuggestion[]>([]);
 
     // UI States
     const [isReminderModalVisible, setReminderModalVisible] = useState(false);
-    const [isExperienceExpanded, setIsExperienceExpanded] = useState(false); // ADDED
+    const [isExperienceExpanded, setIsExperienceExpanded] = useState(false);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            if (farmLocationAddress.trim().length > 2 && farmLocationCoords === null) {
+                fetchLocationSuggestions(farmLocationAddress);
+            } else {
+                setLocationSuggestions([]);
+            }
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [farmLocationAddress, i18n.language]);
+
+    const fetchLocationSuggestions = async (query: string) => {
+        if (!query || !LOCATIONIQ_API_KEY) return;
+        try {
+            const response = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_API_KEY}&q=${encodeURIComponent(query)}&limit=5&format=json&accept-language=${i18n.language}`);
+            const data = await response.json();
+            if (data && !data.error) {
+                setLocationSuggestions(data);
+            } else {
+                setLocationSuggestions([]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch location suggestions:", error);
+        }
+    };
+
+    const onLocationSuggestionSelect = (suggestion: LocationIQSuggestion) => {
+        setFarmLocationAddress(suggestion.display_name);
+        setFarmLocationCoords({ lat: parseFloat(suggestion.lat), lng: parseFloat(suggestion.lon) });
+        setLocationSuggestions([]);
+        Keyboard.dismiss();
+    };
 
     const fetchProfile = useCallback(async (userId: string) => {
         setLoading(true);
@@ -104,17 +137,12 @@ export default function ProfileScreen() {
             else if (error) { throw error; }
             else if (data) {
                 setProfile(data as Profile);
-                // ... (all other set... calls remain the same)
                 setFullName(data.full_name || '');
                 setUsername(data.username || '');
                 setAvatarUrl(data.avatar_url);
                 setWebsite(data.website || '');
                 setFarmDescription(data.farm_description || '');
                 setContactEmail(data.contact_email || '');
-                setAddressStreet(data.address_street || '');
-                setAddressCity(data.address_city || '');
-                setAddressPostalCode(data.address_postal_code || '');
-                setAddressCountry(data.address_country || '');
                 setFarmSpecialization(data.farm_specialization?.join(', ') || '');
                 setFarmSize(data.farm_size_hectares?.toString() || '');
                 setEmployeeCount(data.number_of_employees || '');
@@ -127,7 +155,13 @@ export default function ProfileScreen() {
                 setYoutubeUrl(data.youtube_url || '');
                 setFacebookUrl(data.facebook_url || '');
                 setTiktokUrl(data.tiktok_url || '');
-                setDrivingLicenses(data.driving_licenses || []); // ADDED
+                setDrivingLicenses(data.driving_licenses || []);
+                setFarmLocationAddress(data.farm_location_address || '');
+                if (data.farm_latitude && data.farm_longitude) {
+                    setFarmLocationCoords({ lat: data.farm_latitude, lng: data.farm_longitude });
+                } else {
+                    setFarmLocationCoords(null);
+                }
             }
         } catch (error: any) {
             Alert.alert(t('common.error'), 'Failed to load profile: ' + error.message);
@@ -157,7 +191,7 @@ export default function ProfileScreen() {
             if (profile && profile.role === 'Betrieb') {
                 const snoozeUntil = await AsyncStorage.getItem('@snoozeProfileReminder');
                 if (snoozeUntil && new Date(snoozeUntil) > new Date()) return;
-                const isIncomplete = !profile.farm_description || !profile.address_street || !profile.farm_specialization?.length;
+                const isIncomplete = !profile.farm_description || !profile.farm_specialization?.length;
                 if (isIncomplete) setReminderModalVisible(true);
             }
         };
@@ -180,9 +214,7 @@ export default function ProfileScreen() {
 
         if (profile.role === 'Betrieb') {
             Object.assign(updates, {
-                // ... (all other Betrieb properties remain)
                 full_name: fullName, website, farm_description: farmDescription, contact_email: contactEmail,
-                address_street: addressStreet, address_city: addressCity, address_postal_code: addressPostalCode, address_country: addressCountry,
                 farm_specialization: farmSpecialization.split(',').map(s => s.trim()).filter(Boolean),
                 farm_size_hectares: farmSize ? parseFloat(farmSize) : null,
                 number_of_employees: employeeCount, accommodation_offered: accommodationOffered,
@@ -191,14 +223,17 @@ export default function ProfileScreen() {
                 youtube_url: youtubeUrl,
                 facebook_url: facebookUrl,
                 tiktok_url: tiktokUrl,
+                farm_location_address: farmLocationAddress,
+                farm_latitude: farmLocationCoords?.lat ?? null,
+                farm_longitude: farmLocationCoords?.lng ?? null,
             });
-        } else { // Arbeitnehmer
+        } else {
             Object.assign(updates, {
                 username: username,
                 experience: experience,
                 age: age ? parseInt(age, 10) : null,
                 availability: availability,
-                driving_licenses: drivingLicenses, // ADDED
+                driving_licenses: drivingLicenses,
             });
         }
 
@@ -212,7 +247,6 @@ export default function ProfileScreen() {
         setExperience(prev => prev.includes(item) ? prev.filter(exp => exp !== item) : [...prev, item]);
     };
 
-    // ADDED: Function to toggle driving licenses
     const handleToggleLicense = (license: string) => {
         setDrivingLicenses(prev =>
             prev.includes(license)
@@ -221,7 +255,6 @@ export default function ProfileScreen() {
         );
     };
 
-    // ADDED: Function to toggle collapsible section
     const toggleExperienceSection = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIsExperienceExpanded(!isExperienceExpanded);
@@ -319,20 +352,65 @@ export default function ProfileScreen() {
                             </View>
 
                             <Text style={styles.inputLabel}>{t('profile.role')}</Text>
-                            <Text style={styles.readOnlyText}>{ (profile.role && roleDisplayNames[profile.role]) || 'N/A' }</Text>
+                            <Text style={styles.readOnlyText}>{(profile.role && roleDisplayNames[profile.role]) || 'N/A'}</Text>
 
                             {profile.role === 'Betrieb' ? (
                                 <>
-                                    {/* ... Betrieb-specific fields remain the same ... */}
+                                    <Text style={styles.sectionTitle}>{t('profile.companyDetails')}</Text>
+                                    <Text style={styles.inputLabel}>{t('profile.companyName')}</Text><TextInput style={styles.input} value={fullName} onChangeText={setFullName} placeholder={t('profile.companyName')} placeholderTextColor={themeColors.textHint} editable={!savingProfile} />
+                                    <Text style={styles.inputLabel}>{t('profile.aboutFarm')}</Text><TextInput style={[styles.input, styles.textArea]} value={farmDescription} onChangeText={setFarmDescription} placeholder={t('profile.aboutFarmPlaceholder')} placeholderTextColor={themeColors.textHint} multiline editable={!savingProfile} />
+                                    <View style={styles.row}><View style={styles.col}><Text style={styles.inputLabel}>{t('profile.farmSize')}</Text><TextInput style={styles.input} value={farmSize} onChangeText={setFarmSize} placeholder="e.g., 150" placeholderTextColor={themeColors.textHint} keyboardType="numeric" editable={!savingProfile} /></View><View style={styles.col}><Text style={styles.inputLabel}>{t('profile.employeeCount')}</Text><TextInput style={styles.input} value={employeeCount} onChangeText={setEmployeeCount} placeholder="e.g., 6-20" placeholderTextColor={themeColors.textHint} editable={!savingProfile} /></View></View>
+                                    <Text style={styles.inputLabel}>{t('profile.specialization')}</Text><TextInput style={styles.input} value={farmSpecialization} onChangeText={setFarmSpecialization} placeholder={t('profile.specializationPlaceholder')} placeholderTextColor={themeColors.textHint} editable={!savingProfile} /><Text style={styles.helperText}>{t('common.separateWithCommas')}</Text>
+                                    <Text style={styles.sectionTitle}>{t('profile.equipmentAndBenefits')}</Text>
+                                    <Text style={styles.inputLabel}>{t('profile.machinery')}</Text><TextInput style={styles.input} value={machineryBrands} onChangeText={setMachineryBrands} placeholder={t('profile.machineryPlaceholder')} placeholderTextColor={themeColors.textHint} editable={!savingProfile} /><Text style={styles.helperText}>{t('common.separateWithCommas')}</Text>
+                                    <View style={styles.switchContainer}><Text style={styles.inputLabel}>{t('profile.accommodation')}</Text><Switch trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary + '80' }} thumbColor={accommodationOffered ? themeColors.primary : themeColors.textSecondary} onValueChange={setAccommodationOffered} value={accommodationOffered} disabled={savingProfile} /></View>
+                                    <Text style={styles.sectionTitle}>{t('profile.contactInfo')}</Text>
+                                    <Text style={styles.inputLabel}>{t('profile.publicEmail')}</Text><TextInput style={styles.input} value={contactEmail} onChangeText={setContactEmail} placeholder="info@myfarm.com" placeholderTextColor={themeColors.textHint} keyboardType="email-address" autoCapitalize="none" editable={!savingProfile} />
+                                    <Text style={styles.inputLabel}>{t('profile.website')}</Text><TextInput style={styles.input} value={website} onChangeText={setWebsite} placeholder="www.myfarm.com" placeholderTextColor={themeColors.textHint} autoCapitalize="none" keyboardType="url" editable={!savingProfile} />
+                                    <Text style={styles.sectionTitle}>{t('profile.mainFarmLocation')}</Text>
+                                    <Text style={styles.inputLabel}>{t('profile.locationAddress')}</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder={t('addJob.placeholderExactLocation')}
+                                        placeholderTextColor={themeColors.textHint}
+                                        value={farmLocationAddress}
+                                        onChangeText={(text) => {
+                                            setFarmLocationAddress(text);
+                                            setFarmLocationCoords(null);
+                                        }}
+                                    />
+                                    {locationSuggestions.length > 0 && (
+                                        <FlatList
+                                            data={locationSuggestions}
+                                            keyExtractor={(item) => item.place_id}
+                                            scrollEnabled={false}
+                                            style={styles.suggestionsList}
+                                            renderItem={({ item }) => (
+                                                <TouchableOpacity onPress={() => onLocationSuggestionSelect(item)} style={styles.suggestionItem}>
+                                                    <Text style={styles.suggestionText}>{item.display_name}</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        />
+                                    )}
+                                    <Text style={styles.sectionTitle}>{t('profile.socialMedia')}</Text>
+                                    <Text style={styles.inputLabel}>{t('profile.instagram')}</Text>
+                                    <IconTextInput icon="instagram" value={instagramUrl} onChangeText={setInstagramUrl} placeholder="e.g., instagram.com/myfarm" />
+                                    <Text style={styles.inputLabel}>{t('profile.youtube')}</Text>
+                                    <IconTextInput icon="youtube" value={youtubeUrl} onChangeText={setYoutubeUrl} placeholder="e.g., youtube.com/myfarm" />
+                                    <Text style={styles.inputLabel}>{t('profile.facebook')}</Text>
+                                    <IconTextInput icon="facebook" value={facebookUrl} onChangeText={setFacebookUrl} placeholder="e.g., facebook.com/myfarm" />
+                                    <Text style={styles.inputLabel}>{t('profile.tiktok')}</Text>
+                                    <IconTextInput icon="tiktok" value={tiktokUrl} onChangeText={setTiktokUrl} placeholder="e.g., tiktok.com/@myfarm" />
+
+                                    <Text style={styles.sectionTitle}>{t('profile.jobManagement')}</Text>
+                                    <TouchableOpacity style={styles.manageJobsButton} onPress={() => router.push('/my-jobs')}><MaterialCommunityIcons name="briefcase-edit-outline" size={24} color={themeColors.primary} /><Text style={styles.manageJobsButtonText}>{t('profile.myJobPostings')}</Text></TouchableOpacity>
                                 </>
-                            ) : ( // Arbeitnehmer View
+                            ) : (
                                 <>
                                     <Text style={styles.inputLabel}>Username:</Text><TextInput style={styles.input} value={username} onChangeText={setUsername} placeholder="Enter your username" placeholderTextColor={themeColors.textHint} autoCapitalize="none" editable={!savingProfile} />
                                     <Text style={styles.sectionTitle}>{t('profile.personalDetails')}</Text>
                                     <Text style={styles.inputLabel}>{t('profile.age')}</Text><TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={themeColors.textHint} keyboardType="number-pad" editable={!savingProfile} />
                                     <Text style={styles.inputLabel}>{t('profile.availability')}</Text><TextInput style={styles.input} value={availability} onChangeText={setAvailability} placeholder="e.g., Immediately, from August 2025" placeholderTextColor={themeColors.textHint} editable={!savingProfile} />
-
-                                    {/* ADDED: Driving License Section */}
                                     <Text style={styles.sectionTitle}>{t('profile.drivingLicenses')}</Text>
                                     <View style={styles.chipsContainer}>
                                         {DRIVING_LICENSES.map((license) => {
@@ -344,13 +422,10 @@ export default function ProfileScreen() {
                                             );
                                         })}
                                     </View>
-
-                                    {/* MODIFIED: Experience section is now collapsible */}
                                     <TouchableOpacity style={styles.collapsibleHeader} onPress={toggleExperienceSection} activeOpacity={0.8}>
-                                        <Text style={styles.sectionTitle}>{t('profile.myExperience')}</Text>
+                                        <Text style={styles.sectionTitleText}>{t('profile.myExperience')}</Text>
                                         <MaterialCommunityIcons name={isExperienceExpanded ? 'chevron-up' : 'chevron-down'} size={26} color={themeColors.text} />
                                     </TouchableOpacity>
-
                                     {isExperienceExpanded && (
                                         <View style={styles.experienceContainer}>
                                             {ORDERED_EXPERIENCE_KEYS.map((key) => {
@@ -386,12 +461,20 @@ export default function ProfileScreen() {
                 </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
 
-            {/* ... Modal remains the same ... */}
+            <Modal transparent={true} animationType="fade" visible={isReminderModalVisible} onRequestClose={() => setReminderModalVisible(false)}>
+                <View style={styles.centeredView}>
+                    <View style={styles.reminderModalView}>
+                        <MaterialCommunityIcons name="clipboard-text-search-outline" size={50} color={themeColors.primary} />
+                        <Text style={styles.reminderTitle}>{t('profile.reminderTitle')}</Text>
+                        <Text style={styles.reminderText}>{t('profile.reminderText')}</Text>
+                        <View style={styles.reminderButtonsContainer}><TouchableOpacity style={[styles.reminderButton, styles.snoozeButton]} onPress={handleSnoozeReminder}><Text style={styles.snoozeButtonText}>{t('profile.remindMeLater')}</Text></TouchableOpacity><TouchableOpacity style={styles.reminderButton} onPress={() => setReminderModalVisible(false)}><Text style={styles.reminderButtonText}>{t('profile.illDoIt')}</Text></TouchableOpacity></View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
 
-// MODIFIED: Styles for collapsible header, license chips
 const styles = StyleSheet.create({
     safeAreaContainer: { flex: 1, backgroundColor: themeColors.surface },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: Platform.OS === 'ios' ? 50 : 60, paddingHorizontal: 16, backgroundColor: themeColors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.border },
@@ -420,7 +503,8 @@ const styles = StyleSheet.create({
     logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: themeColors.surfaceHighlight, paddingVertical: 15, borderRadius: 12, marginBottom: 20 },
     logoutButtonText: { fontFamily: baseFontFamily, color: themeColors.text, fontSize: 18, fontWeight: 'bold' },
     logoutIcon: { color: themeColors.text, marginRight: 8 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: themeColors.text, paddingBottom: 5 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: themeColors.text, marginTop: 25, marginBottom: 5, borderBottomWidth: 1, borderBottomColor: themeColors.border, paddingBottom: 5 },
+    sectionTitleText: { fontSize: 18, fontWeight: 'bold', color: themeColors.text },
     textArea: { height: 100, textAlignVertical: 'top', padding: 15 },
     helperText: { fontSize: 12, color: themeColors.textSecondary, marginTop: 4, marginLeft: 2 },
     row: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
@@ -433,73 +517,16 @@ const styles = StyleSheet.create({
     langButtonTextSelected: { color: themeColors.background },
     manageJobsButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: themeColors.surfaceHighlight, paddingVertical: 15, paddingHorizontal: 20, borderRadius: 12, marginTop: 20, justifyContent: 'center' },
     manageJobsButtonText: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.primary, fontWeight: 'bold', marginLeft: 10 },
-
-    // --- Styles for Driving Licenses & Experiences ---
-    collapsibleHeader: { // ADDED
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 25,
-        borderBottomWidth: 1,
-        borderBottomColor: themeColors.border,
-        paddingBottom: 5,
-        marginBottom: 10,
-    },
-    chipsContainer: { // MODIFIED for license chips
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 10,
-        marginBottom: 15,
-    },
-    chip: {
-        backgroundColor: themeColors.surfaceHighlight,
-        paddingVertical: 10,
-        paddingHorizontal: 18,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: themeColors.border,
-        marginRight: 10,
-        marginBottom: 10,
-    },
-    chipSelected: {
-        backgroundColor: themeColors.primary,
-        borderColor: themeColors.primary,
-    },
-    chipText: {
-        color: themeColors.text,
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    chipTextSelected: {
-        color: themeColors.background,
-        fontWeight: 'bold',
-    },
-    experienceContainer: {
-        width: '100%',
-        marginTop: 10,
-        overflow: 'hidden', // ADDED for smooth animation
-    },
-    experienceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 10,
-        backgroundColor: themeColors.surfaceHighlight,
-        borderRadius: 10,
-        marginBottom: 8,
-    },
-    experienceText: {
-        fontFamily: baseFontFamily,
-        color: themeColors.text,
-        fontSize: 16,
-        marginLeft: 12,
-    },
-    experienceSeparator: {
-        height: 1,
-        backgroundColor: themeColors.border,
-        marginVertical: 10,
-    },
-    // Styles for the modal remain unchanged
+    collapsibleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 25, borderBottomWidth: 1, borderBottomColor: themeColors.border, paddingBottom: 5, marginBottom: 10, },
+    chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, marginBottom: 5, },
+    chip: { backgroundColor: themeColors.surfaceHighlight, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, marginRight: 10, marginBottom: 10, },
+    chipSelected: { backgroundColor: themeColors.primary, borderColor: themeColors.primary, },
+    chipText: { color: themeColors.text, fontSize: 16, fontWeight: '600', },
+    chipTextSelected: { color: themeColors.background, fontWeight: 'bold', },
+    experienceContainer: { width: '100%', marginTop: 10, overflow: 'hidden', },
+    experienceRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 10, backgroundColor: themeColors.surfaceHighlight, borderRadius: 10, marginBottom: 8, },
+    experienceText: { fontFamily: baseFontFamily, color: themeColors.text, fontSize: 16, marginLeft: 12, },
+    experienceSeparator: { height: 1, backgroundColor: themeColors.border, marginVertical: 10, },
     centeredView: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
     reminderModalView: { width: '90%', backgroundColor: themeColors.surface, borderRadius: 20, padding: 25, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
     reminderTitle: { fontFamily: baseFontFamily, fontSize: 22, fontWeight: 'bold', color: themeColors.text, marginTop: 15, marginBottom: 10, textAlign: 'center' },
@@ -509,4 +536,7 @@ const styles = StyleSheet.create({
     snoozeButton: { backgroundColor: themeColors.surfaceHighlight, marginRight: 10 },
     reminderButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 16, fontWeight: '600' },
     snoozeButtonText: { color: themeColors.text, fontFamily: baseFontFamily, fontSize: 16, fontWeight: '600' },
+    suggestionsList: { maxHeight: 200, backgroundColor: themeColors.surfaceHighlight, borderRadius: 10, borderWidth: 1, borderColor: themeColors.border, marginTop: -8, marginBottom: 10, },
+    suggestionItem: { padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.border, },
+    suggestionText: { color: themeColors.text, fontSize: 16, },
 });
