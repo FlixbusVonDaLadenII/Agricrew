@@ -33,27 +33,26 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.agri-crew.agri-crew"
-      },
-      "extra": {
-        "eas": {
-          "projectId": "41096993-00de-4595-960d-c5e6fe1c40f8"
-        }
-      },
-      "plugins": [
-        "expo-router"
-      ],
-      "runtimeVersion": {
-        "policy": "appVersion"
-      },
-      "updates": {
-        "url": "https://u.expo.dev/41096993-00de-4595-960d-c5e6fe1c40f8"
-      }
+      "package": "com.agri_crew.agri_crew"
     },
     "extra": {
       "eas": {
         "projectId": "41096993-00de-4595-960d-c5e6fe1c40f8"
       }
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/41096993-00de-4595-960d-c5e6fe1c40f8"
+    }
+  },
+  "extra": {
+    "eas": {
+      "projectId": "41096993-00de-4595-960d-c5e6fe1c40f8"
     }
   }
-
+}

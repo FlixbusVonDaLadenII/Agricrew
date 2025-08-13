@@ -13,7 +13,7 @@ import { decode } from 'base64-arraybuffer';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
-import * as Location from 'expo-location'; // --- ADDED IMPORT ---
+import * as Location from 'expo-location';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -49,7 +49,6 @@ interface Profile {
     farm_location_address?: string | null;
     farm_latitude?: number | null;
     farm_longitude?: number | null;
-    // --- ADDED: For employee location ---
     latitude?: number | null;
     longitude?: number | null;
 }
@@ -95,8 +94,6 @@ export default function ProfileScreen() {
     const [farmLocationAddress, setFarmLocationAddress] = useState('');
     const [farmLocationCoords, setFarmLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [locationSuggestions, setLocationSuggestions] = useState<LocationIQSuggestion[]>([]);
-
-    // --- ADDED: NEW STATE for employee location ---
     const [employeeLocation, setEmployeeLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
@@ -170,7 +167,6 @@ export default function ProfileScreen() {
                 } else {
                     setFarmLocationCoords(null);
                 }
-                // --- ADDED: Set employee location from fetched data ---
                 if (data.latitude && data.longitude) {
                     setEmployeeLocation({ lat: data.latitude, lng: data.longitude });
                 } else {
@@ -192,7 +188,7 @@ export default function ProfileScreen() {
             else { setLoading(false); }
         };
         checkSession();
-        const { data: { subscription } = { subscription: null } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
             if (session?.user) { fetchProfile(session.user.id); }
             else { setProfile(null); }
@@ -242,7 +238,6 @@ export default function ProfileScreen() {
                 farm_longitude: farmLocationCoords?.lng ?? null,
             });
         } else {
-            // --- UPDATED: Employee profile now includes location ---
             Object.assign(updates, {
                 username: username,
                 experience: experience,
@@ -260,22 +255,17 @@ export default function ProfileScreen() {
         else Alert.alert(t('profile.success'), t('profile.profileUpdated'));
     };
 
-    // --- ADDED: New function to get and set employee location ---
     const handleUpdateEmployeeLocation = async () => {
         setIsFetchingLocation(true);
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission Denied', 'Please enable location services to use this feature.');
+            Alert.alert(t('profile.locationPermissionDenied'), t('profile.locationPermissionMessage'));
             setIsFetchingLocation(false);
             return;
         }
-
         try {
             let location = await Location.getCurrentPositionAsync({});
-            setEmployeeLocation({
-                lat: location.coords.latitude,
-                lng: location.coords.longitude,
-            });
+            setEmployeeLocation({ lat: location.coords.latitude, lng: location.coords.longitude });
             Alert.alert(t('profile.locationUpdatedTitle'), t('profile.locationUpdatedMessage'));
         } catch (error) {
             Alert.alert(t('profile.locationErrorTitle'), t('profile.locationErrorMessage'));
@@ -337,6 +327,34 @@ export default function ProfileScreen() {
         await supabase.auth.signOut();
         setLoading(false);
         router.replace('/login');
+    };
+
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            t('profile.deleteConfirmTitle'),
+            t('profile.deleteConfirmMessage'),
+            [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                    text: t('common.delete'),
+                    style: 'destructive',
+                    onPress: async () => {
+                        setSavingProfile(true);
+                        const { error } = await supabase.rpc('delete_user_account');
+                        setSavingProfile(false);
+
+                        if (error) {
+                            console.error("Error deleting account:", error);
+                            Alert.alert(t('profile.deleteErrorTitle'), t('profile.deleteErrorMessage'));
+                        } else {
+                            Alert.alert(t('profile.deleteSuccessTitle'), t('profile.deleteSuccessMessage'));
+                            await supabase.auth.signOut();
+                            router.replace('/login');
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     const IconTextInput = ({ icon, value, onChangeText, placeholder }: { icon: any, value: string, onChangeText: (text: string) => void, placeholder: string }) => (
@@ -449,8 +467,6 @@ export default function ProfileScreen() {
                             ) : (
                                 <>
                                     <Text style={styles.inputLabel}>Username:</Text><TextInput style={styles.input} value={username} onChangeText={setUsername} placeholder="Enter your username" placeholderTextColor={themeColors.textHint} autoCapitalize="none" editable={!savingProfile} />
-
-                                    {/* --- Location section for employees --- */}
                                     <Text style={styles.sectionTitle}>{t('profile.myLocation')}</Text>
                                     <Text style={styles.helperText}>{t('profile.locationHelper')}</Text>
                                     <TouchableOpacity style={styles.manageJobsButton} onPress={handleUpdateEmployeeLocation} disabled={isFetchingLocation}>
@@ -464,7 +480,6 @@ export default function ProfileScreen() {
                                         )}
                                     </TouchableOpacity>
                                     {employeeLocation && <Text style={styles.locationSetText}>{t('profile.locationSet')}</Text>}
-
                                     <Text style={styles.sectionTitle}>{t('profile.personalDetails')}</Text>
                                     <Text style={styles.inputLabel}>{t('profile.age')}</Text><TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={themeColors.textHint} keyboardType="number-pad" editable={!savingProfile} />
                                     <Text style={styles.inputLabel}>{t('profile.availability')}</Text><TextInput style={styles.input} value={availability} onChangeText={setAvailability} placeholder="e.g., Immediately, from August 2025" placeholderTextColor={themeColors.textHint} editable={!savingProfile} />
@@ -486,22 +501,11 @@ export default function ProfileScreen() {
                                     {isExperienceExpanded && (
                                         <View style={styles.experienceContainer}>
                                             {ORDERED_EXPERIENCE_KEYS.map((key) => {
-                                                if (key.startsWith('SEPARATOR')) {
-                                                    return <View key={key} style={styles.experienceSeparator} />;
-                                                }
+                                                if (key.startsWith('SEPARATOR')) { return <View key={key} style={styles.experienceSeparator} />; }
                                                 const isSelected = experience.includes(key);
                                                 return (
-                                                    <TouchableOpacity
-                                                        key={key}
-                                                        style={styles.experienceRow}
-                                                        onPress={() => handleToggleExperience(key)}
-                                                        disabled={savingProfile}
-                                                    >
-                                                        <MaterialCommunityIcons
-                                                            name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                                                            size={24}
-                                                            color={isSelected ? themeColors.primary : themeColors.textSecondary}
-                                                        />
+                                                    <TouchableOpacity key={key} style={styles.experienceRow} onPress={() => handleToggleExperience(key)} disabled={savingProfile}>
+                                                        <MaterialCommunityIcons name={isSelected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={24} color={isSelected ? themeColors.primary : themeColors.textSecondary} />
                                                         <Text style={styles.experienceText}>{experienceOptions[key]}</Text>
                                                     </TouchableOpacity>
                                                 );
@@ -513,6 +517,13 @@ export default function ProfileScreen() {
 
                             <TouchableOpacity style={styles.saveButton} onPress={handleUpdateProfile} disabled={savingProfile || uploadingAvatar}>{savingProfile ? <ActivityIndicator color={themeColors.background} /> : <Text style={styles.saveButtonText}>{t('profile.saveChanges')}</Text>}</TouchableOpacity>
                             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} disabled={loading}>{loading ? <ActivityIndicator color={themeColors.text} /> : <><MaterialCommunityIcons name="logout" size={20} color={themeColors.text} style={styles.logoutIcon} /><Text style={styles.logoutButtonText}>{t('profile.logout')}</Text></>}</TouchableOpacity>
+
+                            <View style={styles.dangerZoneContainer}>
+                                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount} disabled={savingProfile}>
+                                    <MaterialCommunityIcons name="alert-octagon-outline" size={20} color={themeColors.danger} style={styles.deleteIcon} />
+                                    <Text style={styles.deleteButtonText}>{t('profile.deleteAccount')}</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </ScrollView>
                 </TouchableWithoutFeedback>
@@ -557,7 +568,7 @@ const styles = StyleSheet.create({
     inputWithIcon: { flex: 1, fontFamily: baseFontFamily, padding: 15, color: themeColors.text, fontSize: 16, paddingLeft: 10 },
     saveButton: { backgroundColor: themeColors.primary, paddingVertical: 15, borderRadius: 12, alignItems: 'center', marginTop: 30, marginBottom: 15, shadowColor: themeColors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
     saveButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 18, fontWeight: 'bold' },
-    logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: themeColors.surfaceHighlight, paddingVertical: 15, borderRadius: 12, marginBottom: 20 },
+    logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: themeColors.surfaceHighlight, paddingVertical: 15, borderRadius: 12, },
     logoutButtonText: { fontFamily: baseFontFamily, color: themeColors.text, fontSize: 18, fontWeight: 'bold' },
     logoutIcon: { color: themeColors.text, marginRight: 8 },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: themeColors.text, marginTop: 25, marginBottom: 5, borderBottomWidth: 1, borderBottomColor: themeColors.border, paddingBottom: 5 },
@@ -596,12 +607,36 @@ const styles = StyleSheet.create({
     suggestionsList: { maxHeight: 200, backgroundColor: themeColors.surfaceHighlight, borderRadius: 10, borderWidth: 1, borderColor: themeColors.border, marginTop: -8, marginBottom: 10, },
     suggestionItem: { padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.border, },
     suggestionText: { color: themeColors.text, fontSize: 16, },
-    // --- ADDED: New styles for location button ---
     locationSetText: {
         fontFamily: baseFontFamily,
         fontSize: 12,
         color: themeColors.success,
         textAlign: 'center',
         marginTop: 8,
+    },
+    dangerZoneContainer: {
+        marginTop: 30,
+        borderTopWidth: 1,
+        borderTopColor: themeColors.border,
+        paddingTop: 20,
+    },
+    deleteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: themeColors.danger + '20',
+        paddingVertical: 15,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: themeColors.danger,
+    },
+    deleteButtonText: {
+        fontFamily: baseFontFamily,
+        color: themeColors.danger,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    deleteIcon: {
+        marginRight: 8,
     },
 });

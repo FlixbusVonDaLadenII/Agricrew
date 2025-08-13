@@ -172,6 +172,13 @@
     "statusInactive": "Inactive"
   },
   "profile": {
+    "deleteAccount": "Delete Account",
+    "deleteConfirmTitle": "Are you sure?",
+    "deleteConfirmMessage": "This action is irreversible. All your data, including your profile, job listings, and chats, will be permanently deleted.",
+    "deleteSuccessTitle": "Account Deleted",
+    "deleteSuccessMessage": "Your account has been successfully deleted.",
+    "deleteErrorTitle": "Deletion Failed",
+    "deleteErrorMessage": "Could not delete your account. Please contact support.",
     "myLocation": "My Location",
     "locationHelper": "Set your location to receive notifications for urgent jobs nearby.",
     "setLocation": "Set My Location",

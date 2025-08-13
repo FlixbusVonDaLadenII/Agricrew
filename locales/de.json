@@ -172,6 +172,13 @@
     "statusInactive": "Inaktiv"
   },
   "profile": {
+    "deleteAccount": "Konto löschen",
+    "deleteConfirmTitle": "Sind Sie sicher?",
+    "deleteConfirmMessage": "Diese Aktion ist unumkehrbar. Alle Ihre Daten, einschliesslich Ihres Profils, Ihrer Jobangebote und Chats, werden dauerhaft gelöscht.",
+    "deleteSuccessTitle": "Konto gelöscht",
+    "deleteSuccessMessage": "Ihr Konto wurde erfolgreich gelöscht.",
+    "deleteErrorTitle": "Löschen fehlgeschlagen",
+    "deleteErrorMessage": "Ihr Konto konnte nicht gelöscht werden. Bitte kontaktieren Sie den Support.",
     "myLocation": "Mein Standort",
     "locationHelper": "Legen Sie Ihren Standort fest, um Benachrichtigungen für dringende Jobs in der Nähe zu erhalten.",
     "setLocation": "Meinen Standort festlegen",
