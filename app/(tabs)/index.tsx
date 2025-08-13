@@ -137,11 +137,16 @@ export default function IndexScreen() {
     };
 
 
-    // MODIFIED: Added appliedJobTypes to dependency array and filter logic
     const fetchAndFilterJobs = useCallback(async () => {
         setLoading(true);
         try {
-            let query = supabase.from('jobs').select(`*, profiles (*)`).eq('is_active', true);
+            // --- THIS IS THE FIX ---
+            // Add .order() to sort by creation date descending (newest first).
+            let query = supabase
+                .from('jobs')
+                .select(`*, profiles (*)`)
+                .eq('is_active', true)
+                .order('created_at', { ascending: false });
 
             if (appliedRadius < 200 && userLocation) {
                 query = query.not('latitude', 'is', null).not('longitude', 'is', null);
@@ -171,7 +176,6 @@ export default function IndexScreen() {
                 const matchesCountry = !appliedCountry || job.country === appliedCountry;
                 const matchesRegion = appliedRegions.length === 0 || appliedRegions.includes(job.region);
                 const matchesAccommodation = !appliedOffersAccommodation || job.offers_accommodation;
-                // ADDED: Logic for job type filter
                 const matchesJobTypes = appliedJobTypes.length === 0 || (job.job_type && appliedJobTypes.some(type => job.job_type!.includes(type)));
 
                 const matchesRadius = (() => {
@@ -182,9 +186,10 @@ export default function IndexScreen() {
                     return distance <= appliedRadius;
                 })();
 
-                return matchesSearch && matchesLicenses && matchesCountry && matchesRegion && matchesRadius && matchesAccommodation && matchesJobTypes; // MODIFIED
+                return matchesSearch && matchesLicenses && matchesCountry && matchesRegion && matchesRadius && matchesAccommodation && matchesJobTypes;
             });
 
+            // This sort for urgent jobs should remain to prioritize them over non-urgent ones
             fetchedJobs.sort((a, b) => {
                 if (a.is_urgent && !b.is_urgent) return -1;
                 if (!a.is_urgent && b.is_urgent) return 1;
@@ -231,10 +236,8 @@ export default function IndexScreen() {
     };
     const toggleRegion = (regionKey: string) => setSelectedRegions(prev => prev.includes(regionKey) ? prev.filter(r => r !== regionKey) : [...prev, regionKey]);
     const toggleLicense = (license: string) => setSelectedLicenses(prev => prev.includes(license) ? prev.filter(l => l !== license) : [...prev, license]);
-    // ADDED: Function to toggle job type filter
     const toggleJobType = (typeKey: string) => setSelectedJobTypes(prev => prev.includes(typeKey) ? prev.filter(t => t !== typeKey) : [...prev, typeKey]);
 
-    // MODIFIED: Update applyFilters to include job types
     const applyFilters = async () => {
         let location: UserLocation | null = userLocation;
         if (radius < 200 && !location) {
@@ -249,25 +252,24 @@ export default function IndexScreen() {
         setAppliedRegions(selectedRegions);
         setAppliedRadius(location ? radius : 200);
         setAppliedOffersAccommodation(offersAccommodation);
-        setAppliedJobTypes(selectedJobTypes); // ADDED
+        setAppliedJobTypes(selectedJobTypes);
         setFilterModalVisible(false);
     };
 
-    // MODIFIED: Update resetFilters to include job types
     const resetFilters = () => {
         setSelectedLicenses([]);
         setSelectedCountry(null);
         setSelectedRegions([]);
         setRadius(200);
         setOffersAccommodation(false);
-        setSelectedJobTypes([]); // ADDED
+        setSelectedJobTypes([]);
 
         setAppliedLicenses([]);
         setAppliedCountry(null);
         setAppliedRegions([]);
         setAppliedRadius(200);
         setAppliedOffersAccommodation(false);
-        setAppliedJobTypes([]); // ADDED
+        setAppliedJobTypes([]);
         setUserLocation(null);
         setFilterModalVisible(false);
     };
@@ -369,7 +371,6 @@ export default function IndexScreen() {
                                 />
                             </View>
 
-                            {/* ADDED: Job Type Filter Section */}
                             <View style={styles.filterSection}>
                                 <Text style={styles.filterLabel}>{t('jobList.jobType')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>

@@ -83,12 +83,22 @@ export default function MyJobsScreen() {
                     text: t('common.delete'),
                     style: 'destructive',
                     onPress: async () => {
-                        const { error } = await supabase.from('jobs').delete().eq('id', jobId);
-                        if (error) {
-                            Alert.alert(t('myJobs.deleteErrorTitle'), error.message || t('myJobs.deleteErrorMessage'));
+                        // --- MODIFICATION START: Call refund function first ---
+                        const { error: refundError } = await supabase.rpc('refund_job_quota', { job_id_input: jobId });
+                        if (refundError) {
+                            console.error("Error refunding quota:", refundError);
+                            // Decide if you want to stop the deletion or just log the error
+                        }
+
+                        // Now delete the job
+                        const { error: deleteError } = await supabase.from('jobs').delete().eq('id', jobId);
+                        // --- MODIFICATION END ---
+
+                        if (deleteError) {
+                            Alert.alert(t('myJobs.deleteErrorTitle'), deleteError.message || t('myJobs.deleteErrorMessage'));
                         } else {
                             Alert.alert(t('myJobs.deleteSuccessTitle'), t('myJobs.deleteSuccessMessage'));
-                            fetchMyJobs();
+                            fetchMyJobs(); // Refresh the list
                         }
                     },
                 },
@@ -172,6 +182,7 @@ export default function MyJobsScreen() {
     );
 }
 
+// ... (Your existing styles remain the same)
 const styles = StyleSheet.create({
     safeAreaContainer: {
         flex: 1,

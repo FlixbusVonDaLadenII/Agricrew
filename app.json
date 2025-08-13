@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.agricrewapp.agricrew",
+      "bundleIdentifier": "com.agri-crew.agri-crew",
       "buildNumber": "20",
       "entitlements": {
         "aps-environment": "production"
@@ -33,7 +33,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.agricrewapp.agricrew"
+      "package": "com.agri-crew.agri-crew"
       },
       "extra": {
         "eas": {

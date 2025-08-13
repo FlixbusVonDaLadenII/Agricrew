@@ -121,7 +121,6 @@ export default function ChatScreen() {
 
     useEffect(() => {
         navigation.setOptions({
-            headerBackTitleVisible: false,
             headerTitle: () => (
                 <TouchableOpacity onPress={handleViewProfile} disabled={!otherUser} style={styles.headerTouchable}>
                     {otherUser?.avatar_url ? (
@@ -167,7 +166,6 @@ export default function ChatScreen() {
 
                 if (messagesError) throw messagesError;
                 if (messagesData) {
-                    // MODIFIED: No longer need to reverse the array for an inverted list
                     setMessages(messagesData);
                     if (messagesData.length < PAGE_SIZE) {
                         setHasMoreMessages(false);
@@ -185,7 +183,6 @@ export default function ChatScreen() {
 
     useEffect(() => {
         if (!chatId || !session?.user?.id) return;
-        // MODIFIED: For an inverted list, new messages should be added to the START of the array.
         const messageChannel = supabase.channel(`chat_${chatId}`).on<Message>('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
             setMessages(currentMessages => [payload.new, ...currentMessages]);
         }).subscribe();
@@ -228,7 +225,6 @@ export default function ChatScreen() {
             if (newMessagesData.length < PAGE_SIZE) {
                 setHasMoreMessages(false);
             }
-            // MODIFIED: Append older messages to the end of the array. The inverted list handles the rest.
             setMessages(prevMessages => [...prevMessages, ...newMessagesData]);
         }
         setLoadingMore(false);
@@ -238,17 +234,11 @@ export default function ChatScreen() {
         const messageContent = newMessage.trim();
         if (!messageContent || !session?.user || !chatId) return;
 
-        // REMOVED: Optimistic update is tricky with real-time and inverted lists.
-        // We now rely on the subscription to add the message.
-        // const optimisticMessage: Message = { ... };
-        // setMessages(currentMessages => [optimisticMessage, ...currentMessages]);
-
         setNewMessage('');
         const { error } = await supabase.from('messages').insert({ chat_id: chatId, sender_id: session.user.id, content: messageContent });
 
         if (error) {
             console.error('Error sending message:', error);
-            // Since we removed optimistic update, we just need to alert the user.
             setNewMessage(messageContent);
             Alert.alert(t('common.error'), t('chat.sendMessageError'));
         }
@@ -288,9 +278,6 @@ export default function ChatScreen() {
                     keyExtractor={(item) => item.id}
                     style={styles.messageList}
                     contentContainerStyle={{ paddingTop: 10, paddingBottom: 5 }}
-                    // REMOVED: scrollToEnd is not needed for inverted lists
-                    // onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                    // onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
                     onEndReached={loadMoreMessages}
                     onEndReachedThreshold={0.8}
                     inverted
@@ -394,7 +381,7 @@ const styles = StyleSheet.create({
     messageList: {
         flex: 1,
         paddingHorizontal: 10,
-        transform: [{ scaleY: -1 }], // MODIFIED: Apply transform directly to the list
+        transform: [{ scaleY: -1 }],
     },
     inputContainer: {
         flexDirection: 'row',
@@ -428,7 +415,6 @@ const styles = StyleSheet.create({
     messageRow: {
         flexDirection: 'row',
         marginVertical: 2,
-        // REMOVED: The transform is now on the list itself, not each row.
     },
     myMessageRow: {
         justifyContent: 'flex-end',

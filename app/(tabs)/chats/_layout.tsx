@@ -1,5 +1,3 @@
-// app/(tabs)/chats/_layout.tsx
-
 import { Stack } from 'expo-router';
 import { getThemeColors } from '@/theme/colors';
 
@@ -16,11 +14,18 @@ export default function ChatLayout() {
         >
             <Stack.Screen
                 name="index" // This is the chat list screen
-                options={{ title: 'Messages' }}
+                options={{
+                    title: 'Messages',
+                    // --- THIS IS THE FIX ---
+                    // This sets the back button title for any screen pushed from this one
+                    headerBackTitle: '',
+                }}
             />
             <Stack.Screen
                 name="[id]" // This is the individual chat screen
-                options={{ title: 'Chat' }}
+                options={{
+                    // Options specific to the chat screen itself can remain here
+                }}
             />
         </Stack>
     );

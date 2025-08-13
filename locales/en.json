@@ -101,6 +101,11 @@
     "urgent": "Urgent"
   },
   "addJob": {
+    "quotaExceededTitle": "Job Quota Exceeded",
+    "quotaExceededMessage": "You have used all available job posts for this period. Please upgrade your plan or wait for it to renew.",
+    "sosQuotaExceededTitle": "SOS Quota Exceeded",
+    "sosQuotaExceededMessage": "You have used all your available SOS alerts. Would you like to purchase a single SOS alert for €4.99?",
+    "purchaseButton": "Purchase",
     "alertInvalidLocation": "Location Not Set",
     "alertInvalidLocationMessage": "Please select a valid location from the suggestions.",
     "alertInvalidSalary": "Invalid Salary",
@@ -295,5 +300,46 @@
     "tierhaltung": ["Cattle Farming", "Pig Farming", "Poultry Farming", "Sheep and Goat Farming", "Horse Breeding", "Dairy Farming", "Animal Care", "Stable Work", "Feeding Technology", "Animal Breeding"],
     "sonstiges": ["Renewable Energy", "Direct Marketing", "Farm Tourism", "Agricultural Consulting", "Research and Development", "Quality Assurance", "Logistics", "Craftsmanship", "Teaching and Training", "Event Management"],
     "buchhaltung": ["Tax Consulting", "Payroll Accounting", "Financial Accounting", "Controlling", "Annual Financial Statements", "Disposition", "Office Administration", "Bookkeeping", "Secretarial"]
+  },
+  "subscribe": {
+    "title": "Subscription Required",
+    "subtitle": "To continue using Agri-Crew, please select the plan for your role as a",
+    "buttonText": "Subscribe Now",
+    "logout": "Logout",
+    "purchaseErrorTitle": "Purchase Failed",
+    "purchaseErrorMessage": "We could not complete your purchase. Please try again.",
+    "updateError": "Could not update your subscription status.",
+    "plans": {
+      "employee_yearly": {
+        "title": "Employee Plan",
+        "price": "€2,99",
+        "period": "/ year",
+        "features": ["Access all job listings", "Direct chat with farms", "SOS Job notifications"]
+      },
+      "admin_monthly": {
+        "title": "Admin Plan",
+        "price": "€5,99",
+        "period": "/ month",
+        "features": ["Full access for administrative tasks"]
+      },
+      "farm_s": {
+        "title": "Farm Package S",
+        "price": "€7,99",
+        "period": "/ month",
+        "features": ["10 job posts included", "0 SOS alerts included"]
+      },
+      "farm_m": {
+        "title": "Farm Package M",
+        "price": "€19,99",
+        "period": "/ month",
+        "features": ["20 job posts included", "5 SOS alerts included"]
+      },
+      "farm_l": {
+        "title": "Farm Package L",
+        "price": "€34,99",
+        "period": "/ month",
+        "features": ["20 job posts included", "10 SOS alerts included", "Top placement in listings"]
+      }
+    }
   }
 }

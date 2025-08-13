@@ -101,6 +101,11 @@
     "urgent": "Dringend"
   },
   "addJob": {
+    "quotaExceededTitle": "Job-Kontingent Überschritten",
+    "quotaExceededMessage": "Sie haben alle verfügbaren Jobanzeigen für diesen Zeitraum aufgebraucht. Bitte upgraden Sie Ihr Paket oder warten Sie auf die Erneuerung.",
+    "sosQuotaExceededTitle": "SOS-Kontingent Überschritten",
+    "sosQuotaExceededMessage": "Sie haben alle verfügbaren SOS-Alarme aufgebraucht. Möchten Sie einen einzelnen SOS-Alarm für 4,99€ kaufen?",
+    "purchaseButton": "Kaufen",
     "alertInvalidLocation": "Standort nicht festgelegt",
     "alertInvalidLocationMessage": "Bitte wähle einen gültigen Standort aus den Vorschlägen aus.",
     "alertInvalidSalary": "Ungültiger Lohn",
@@ -295,5 +300,46 @@
     "tierhaltung": ["Rinderhaltung", "Schweinehaltung", "Geflügelhaltung", "Schaf- und Ziegenhaltung", "Pferdehaltung", "Milchviehhaltung", "Tierpflege", "Stallarbeit", "Fütterungstechnik", "Tierzucht"],
     "sonstiges": ["Erneuerbare Energien", "Direktvermarktung", "Tourismus auf dem Bauernhof", "Landwirtschaftliche Beratung", "Forschung und Entwicklung", "Qualitätssicherung", "Logistik", "Handwerk", "Lehre und Ausbildung", "Veranstaltungsmanagement"],
     "buchhaltung": ["Disposition", "Bürokraft", "Buchhaltung", "Sekretariat", "Steuerberatung", "Lohnbuchhaltung", "Finanzbuchhaltung", "Controlling", "Jahresabschluss"]
+  },
+  "subscribe": {
+    "title": "Abonnement Erforderlich",
+    "subtitle": "Um Agri-Crew weiterhin zu nutzen, wählen Sie bitte den Plan für Ihre Rolle als",
+    "buttonText": "Jetzt Abonnieren",
+    "logout": "Abmelden",
+    "purchaseErrorTitle": "Kauf Fehlgeschlagen",
+    "purchaseErrorMessage": "Wir konnten Ihren Kauf nicht abschließen. Bitte versuchen Sie es erneut.",
+    "updateError": "Ihr Abonnementstatus konnte nicht aktualisiert werden.",
+    "plans": {
+      "employee_yearly": {
+        "title": "Arbeitnehmer-Plan",
+        "price": "2,99€",
+        "period": "/ Jahr",
+        "features": ["Zugang zu allen Jobangeboten", "Direkter Chat mit Betrieben", "SOS-Job-Benachrichtigungen"]
+      },
+      "admin_monthly": {
+        "title": "Verwaltungs-Plan",
+        "price": "5,99€",
+        "period": "/ Monat",
+        "features": ["Voller Zugriff für administrative Aufgaben"]
+      },
+      "farm_s": {
+        "title": "Betriebs-Paket S",
+        "price": "7,99€",
+        "period": "/ Monat",
+        "features": ["10 Jobanzeigen inklusive", "0 SOS-Alarme inklusive"]
+      },
+      "farm_m": {
+        "title": "Betriebs-Paket M",
+        "price": "19,99€",
+        "period": "/ Monat",
+        "features": ["20 Jobanzeigen inklusive", "5 SOS-Alarme inklusive"]
+      },
+      "farm_l": {
+        "title": "Betriebs-Paket L",
+        "price": "34,99€",
+        "period": "/ Monat",
+        "features": ["20 Jobanzeigen inklusive", "10 SOS-Alarme inklusive", "Top-Platzierung in den Joblisten"]
+      }
+    }
   }
 }

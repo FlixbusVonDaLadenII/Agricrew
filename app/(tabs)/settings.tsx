@@ -13,6 +13,7 @@ import { decode } from 'base64-arraybuffer';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import * as Location from 'expo-location'; // --- ADDED IMPORT ---
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -22,7 +23,7 @@ const currentTheme: Theme = 'dark';
 const themeColors = getThemeColors(currentTheme);
 const baseFontFamily = Platform.select({ ios: 'System', android: 'Roboto', default: 'System' });
 
-const DRIVING_LICENSES = ['B', 'BE', 'C', 'CE', 'C1', 'C1E', 'T', 'L'];
+const DRIVING_LICENSES = ['B', 'BE', 'C', 'CE', 'C1', 'C1E', 'T', 'L', '95'];
 const LOCATIONIQ_API_KEY = 'pk.bab6acfa1b6e45c75d826424ef472993'; // Your LocationIQ Key
 
 interface LocationIQSuggestion {
@@ -48,6 +49,9 @@ interface Profile {
     farm_location_address?: string | null;
     farm_latitude?: number | null;
     farm_longitude?: number | null;
+    // --- ADDED: For employee location ---
+    latitude?: number | null;
+    longitude?: number | null;
 }
 
 const ORDERED_EXPERIENCE_KEYS = [
@@ -91,6 +95,10 @@ export default function ProfileScreen() {
     const [farmLocationAddress, setFarmLocationAddress] = useState('');
     const [farmLocationCoords, setFarmLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [locationSuggestions, setLocationSuggestions] = useState<LocationIQSuggestion[]>([]);
+
+    // --- ADDED: NEW STATE for employee location ---
+    const [employeeLocation, setEmployeeLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
     // UI States
     const [isReminderModalVisible, setReminderModalVisible] = useState(false);
@@ -162,6 +170,12 @@ export default function ProfileScreen() {
                 } else {
                     setFarmLocationCoords(null);
                 }
+                // --- ADDED: Set employee location from fetched data ---
+                if (data.latitude && data.longitude) {
+                    setEmployeeLocation({ lat: data.latitude, lng: data.longitude });
+                } else {
+                    setEmployeeLocation(null);
+                }
             }
         } catch (error: any) {
             Alert.alert(t('common.error'), 'Failed to load profile: ' + error.message);
@@ -228,12 +242,15 @@ export default function ProfileScreen() {
                 farm_longitude: farmLocationCoords?.lng ?? null,
             });
         } else {
+            // --- UPDATED: Employee profile now includes location ---
             Object.assign(updates, {
                 username: username,
                 experience: experience,
                 age: age ? parseInt(age, 10) : null,
                 availability: availability,
                 driving_licenses: drivingLicenses,
+                latitude: employeeLocation?.lat ?? null,
+                longitude: employeeLocation?.lng ?? null,
             });
         }
 
@@ -241,6 +258,30 @@ export default function ProfileScreen() {
         setSavingProfile(false);
         if (error) Alert.alert(t('common.error'), error.message);
         else Alert.alert(t('profile.success'), t('profile.profileUpdated'));
+    };
+
+    // --- ADDED: New function to get and set employee location ---
+    const handleUpdateEmployeeLocation = async () => {
+        setIsFetchingLocation(true);
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Denied', 'Please enable location services to use this feature.');
+            setIsFetchingLocation(false);
+            return;
+        }
+
+        try {
+            let location = await Location.getCurrentPositionAsync({});
+            setEmployeeLocation({
+                lat: location.coords.latitude,
+                lng: location.coords.longitude,
+            });
+            Alert.alert("Location Updated", "Your location has been updated. Don't forget to save your profile.");
+        } catch (error) {
+            Alert.alert("Error", "Could not get your location.");
+        } finally {
+            setIsFetchingLocation(false);
+        }
     };
 
     const handleToggleExperience = (item: string) => {
@@ -408,6 +449,23 @@ export default function ProfileScreen() {
                             ) : (
                                 <>
                                     <Text style={styles.inputLabel}>Username:</Text><TextInput style={styles.input} value={username} onChangeText={setUsername} placeholder="Enter your username" placeholderTextColor={themeColors.textHint} autoCapitalize="none" editable={!savingProfile} />
+
+                                    {/* --- ADDED: Location section for employees --- */}
+                                    <Text style={styles.sectionTitle}>My Location</Text>
+                                    <Text style={styles.helperText}>Set your location to receive notifications for urgent jobs nearby.</Text>
+                                    <TouchableOpacity style={styles.manageJobsButton} onPress={handleUpdateEmployeeLocation} disabled={isFetchingLocation}>
+                                        {isFetchingLocation ? <ActivityIndicator color={themeColors.primary} /> : (
+                                            <>
+                                                <MaterialCommunityIcons name="map-marker-radius-outline" size={24} color={themeColors.primary} />
+                                                <Text style={styles.manageJobsButtonText}>
+                                                    {employeeLocation ? "Update My Location" : "Set My Location"}
+                                                </Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                    {employeeLocation && <Text style={styles.locationSetText}>Location is set. Save to confirm.</Text>}
+                                    {/* --- END of new location section --- */}
+
                                     <Text style={styles.sectionTitle}>{t('profile.personalDetails')}</Text>
                                     <Text style={styles.inputLabel}>{t('profile.age')}</Text><TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={themeColors.textHint} keyboardType="number-pad" editable={!savingProfile} />
                                     <Text style={styles.inputLabel}>{t('profile.availability')}</Text><TextInput style={styles.input} value={availability} onChangeText={setAvailability} placeholder="e.g., Immediately, from August 2025" placeholderTextColor={themeColors.textHint} editable={!savingProfile} />
@@ -515,7 +573,7 @@ const styles = StyleSheet.create({
     langButtonSelected: { backgroundColor: themeColors.primary },
     langButtonText: { fontFamily: baseFontFamily, color: themeColors.textSecondary, fontWeight: '600' },
     langButtonTextSelected: { color: themeColors.background },
-    manageJobsButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: themeColors.surfaceHighlight, paddingVertical: 15, paddingHorizontal: 20, borderRadius: 12, marginTop: 20, justifyContent: 'center' },
+    manageJobsButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: themeColors.surfaceHighlight, paddingVertical: 15, paddingHorizontal: 20, borderRadius: 12, marginTop: 10, justifyContent: 'center' },
     manageJobsButtonText: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.primary, fontWeight: 'bold', marginLeft: 10 },
     collapsibleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 25, borderBottomWidth: 1, borderBottomColor: themeColors.border, paddingBottom: 5, marginBottom: 10, },
     chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, marginBottom: 5, },
@@ -539,4 +597,12 @@ const styles = StyleSheet.create({
     suggestionsList: { maxHeight: 200, backgroundColor: themeColors.surfaceHighlight, borderRadius: 10, borderWidth: 1, borderColor: themeColors.border, marginTop: -8, marginBottom: 10, },
     suggestionItem: { padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.border, },
     suggestionText: { color: themeColors.text, fontSize: 16, },
+    // --- ADDED: New styles for location button ---
+    locationSetText: {
+        fontFamily: baseFontFamily,
+        fontSize: 12,
+        color: themeColors.success,
+        textAlign: 'center',
+        marginTop: 8,
+    },
 });
