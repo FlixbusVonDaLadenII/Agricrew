@@ -172,6 +172,17 @@
     "statusInactive": "Inaktiv"
   },
   "profile": {
+    "myLocation": "Mein Standort",
+    "locationHelper": "Legen Sie Ihren Standort fest, um Benachrichtigungen für dringende Jobs in der Nähe zu erhalten.",
+    "setLocation": "Meinen Standort festlegen",
+    "updateLocation": "Meinen Standort aktualisieren",
+    "locationSet": "Standort ist festgelegt. Speichern, um zu bestätigen.",
+    "locationPermissionDenied": "Berechtigung verweigert",
+    "locationPermissionMessage": "Bitte aktivieren Sie die Ortungsdienste, um diese Funktion zu nutzen.",
+    "locationUpdatedTitle": "Standort Aktualisiert",
+    "locationUpdatedMessage": "Ihr Standort wurde aktualisiert. Vergessen Sie nicht, Ihr Profil zu speichern.",
+    "locationErrorTitle": "Fehler",
+    "locationErrorMessage": "Ihr Standort konnte nicht abgerufen werden.",
     "aboutFarm": "Über den Betrieb (Beschreibung)",
     "aboutFarmPlaceholder": "Beschreibe deinen Betrieb, seine Geschichte und Mission.",
     "accommodation": "Unterkunft angeboten",
@@ -237,6 +248,7 @@
     "unknownUser": "Unbekannter Nutzer"
   },
   "chat": {
+    "chatStarted": "Chat gestartet am",
     "inputPlaceholder": "Nachricht schreiben...",
     "loadingChatError": "Chat-Details konnten nicht geladen werden.",
     "loadingProfileError": "Profil konnte nicht geladen werden.",
@@ -339,6 +351,30 @@
         "price": "34,99€",
         "period": "/ Monat",
         "features": ["20 Jobanzeigen inklusive", "10 SOS-Alarme inklusive", "Top-Platzierung in den Joblisten"]
+      },
+      "billingCycle": "Abrechnungszeitraum",
+      "monthly": "Monatlich",
+      "yearly": "Jährlich",
+      "save10": "10% sparen",
+      "plans": {
+        "farm_s_yearly": {
+          "title": "Betriebs-Paket S (Jährlich)",
+          "price": "86,29€",
+          "period": "/ Jahr",
+          "features": ["120 Jobanzeigen inklusive", "0 SOS-Alarme inklusive"]
+        },
+        "farm_m_yearly": {
+          "title": "Betriebs-Paket M (Jährlich)",
+          "price": "215,89€",
+          "period": "/ Jahr",
+          "features": ["240 Jobanzeigen inklusive", "60 SOS-Alarme inklusive"]
+        },
+        "farm_l_yearly": {
+          "title": "Betriebs-Paket L (Jährlich)",
+          "price": "377,89€",
+          "period": "/ Jahr",
+          "features": ["240 Jobanzeigen inklusive", "120 SOS-Alarme inklusive", "Top-Platzierung in den Joblisten"]
+        }
       }
     }
   }

@@ -24,7 +24,7 @@ const themeColors = getThemeColors(currentTheme);
 const baseFontFamily = Platform.select({ ios: 'System', android: 'Roboto', default: 'System' });
 
 const DRIVING_LICENSES = ['B', 'BE', 'C', 'CE', 'C1', 'C1E', 'T', 'L', '95'];
-const LOCATIONIQ_API_KEY = 'pk.bab6acfa1b6e45c75d826424ef472993'; // Your LocationIQ Key
+const LOCATIONIQ_API_KEY = process.env.EXPO_PUBLIC_LOCATIONIQ_API_KEY;
 
 interface LocationIQSuggestion {
     place_id: string;
@@ -276,9 +276,9 @@ export default function ProfileScreen() {
                 lat: location.coords.latitude,
                 lng: location.coords.longitude,
             });
-            Alert.alert("Location Updated", "Your location has been updated. Don't forget to save your profile.");
+            Alert.alert(t('profile.locationUpdatedTitle'), t('profile.locationUpdatedMessage'));
         } catch (error) {
-            Alert.alert("Error", "Could not get your location.");
+            Alert.alert(t('profile.locationErrorTitle'), t('profile.locationErrorMessage'));
         } finally {
             setIsFetchingLocation(false);
         }
@@ -450,21 +450,20 @@ export default function ProfileScreen() {
                                 <>
                                     <Text style={styles.inputLabel}>Username:</Text><TextInput style={styles.input} value={username} onChangeText={setUsername} placeholder="Enter your username" placeholderTextColor={themeColors.textHint} autoCapitalize="none" editable={!savingProfile} />
 
-                                    {/* --- ADDED: Location section for employees --- */}
-                                    <Text style={styles.sectionTitle}>My Location</Text>
-                                    <Text style={styles.helperText}>Set your location to receive notifications for urgent jobs nearby.</Text>
+                                    {/* --- Location section for employees --- */}
+                                    <Text style={styles.sectionTitle}>{t('profile.myLocation')}</Text>
+                                    <Text style={styles.helperText}>{t('profile.locationHelper')}</Text>
                                     <TouchableOpacity style={styles.manageJobsButton} onPress={handleUpdateEmployeeLocation} disabled={isFetchingLocation}>
                                         {isFetchingLocation ? <ActivityIndicator color={themeColors.primary} /> : (
                                             <>
                                                 <MaterialCommunityIcons name="map-marker-radius-outline" size={24} color={themeColors.primary} />
                                                 <Text style={styles.manageJobsButtonText}>
-                                                    {employeeLocation ? "Update My Location" : "Set My Location"}
+                                                    {employeeLocation ? t('profile.updateLocation') : t('profile.setLocation')}
                                                 </Text>
                                             </>
                                         )}
                                     </TouchableOpacity>
-                                    {employeeLocation && <Text style={styles.locationSetText}>Location is set. Save to confirm.</Text>}
-                                    {/* --- END of new location section --- */}
+                                    {employeeLocation && <Text style={styles.locationSetText}>{t('profile.locationSet')}</Text>}
 
                                     <Text style={styles.sectionTitle}>{t('profile.personalDetails')}</Text>
                                     <Text style={styles.inputLabel}>{t('profile.age')}</Text><TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={themeColors.textHint} keyboardType="number-pad" editable={!savingProfile} />

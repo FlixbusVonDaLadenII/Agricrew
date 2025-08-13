@@ -17,7 +17,7 @@ const themeColors = getThemeColors(currentTheme);
 const baseFontFamily = Platform.select({ ios: 'System', android: 'Roboto', default: 'System' });
 
 const DRIVING_LICENSES = ['B', 'BE', 'C', 'CE', 'C1', 'C1E', 'T', 'L'];
-const LOCATIONIQ_API_KEY = 'pk.bab6acfa1b6e45c75d826424ef472993';
+const LOCATIONIQ_API_KEY = process.env.EXPO_PUBLIC_LOCATIONIQ_API_KEY;
 
 // --- Animation Constants ---
 const HEADER_MAX_HEIGHT = 120;

@@ -172,6 +172,17 @@
     "statusInactive": "Inactive"
   },
   "profile": {
+    "myLocation": "My Location",
+    "locationHelper": "Set your location to receive notifications for urgent jobs nearby.",
+    "setLocation": "Set My Location",
+    "updateLocation": "Update My Location",
+    "locationSet": "Location is set. Save to confirm.",
+    "locationPermissionDenied": "Permission Denied",
+    "locationPermissionMessage": "Please enable location services to use this feature.",
+    "locationUpdatedTitle": "Location Updated",
+    "locationUpdatedMessage": "Your location has been updated. Don't forget to save your profile.",
+    "locationErrorTitle": "Error",
+    "locationErrorMessage": "Could not get your location.",
     "aboutFarm": "About the Farm (Description)",
     "aboutFarmPlaceholder": "Describe your farm, its history, and mission.",
     "accommodation": "Accommodation Offered",
@@ -237,6 +248,7 @@
     "unknownUser": "Unknown User"
   },
   "chat": {
+    "chatStarted": "Chat started on",
     "inputPlaceholder": "Write a message...",
     "loadingChatError": "Could not load chat details.",
     "loadingProfileError": "Could not load profile.",
@@ -339,6 +351,30 @@
         "price": "€34,99",
         "period": "/ month",
         "features": ["20 job posts included", "10 SOS alerts included", "Top placement in listings"]
+      },
+      "billingCycle": "Billing Cycle",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "save10": "Save 10%",
+      "plans": {
+        "farm_s_yearly": {
+          "title": "Farm Package S (Yearly)",
+          "price": "€86.29",
+          "period": "/ year",
+          "features": ["120 job posts included", "0 SOS alerts included"]
+        },
+        "farm_m_yearly": {
+          "title": "Farm Package M (Yearly)",
+          "price": "€215.89",
+          "period": "/ year",
+          "features": ["240 job posts included", "60 SOS alerts included"]
+        },
+        "farm_l_yearly": {
+          "title": "Farm Package L (Yearly)",
+          "price": "€377.89",
+          "period": "/ year",
+          "features": ["240 job posts included", "120 SOS alerts included", "Top placement in listings"]
+        }
       }
     }
   }

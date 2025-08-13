@@ -29,6 +29,17 @@ interface Chat {
     other_user_avatar_url: string | null;
 }
 
+// --- ADDED: Interface for the new message payload ---
+interface MessagePayload {
+    new: {
+        id: string;
+        chat_id: string;
+        content: string;
+        created_at: string;
+        sender_id: string;
+    };
+}
+
 export default function ChatListScreen() {
     const { t } = useTranslation();
     const [chats, setChats] = useState<Chat[]>([]);
@@ -87,20 +98,51 @@ export default function ChatListScreen() {
         }, [fetchChats])
     );
 
+    // --- MODIFICATION START: Optimized real-time updates ---
     useEffect(() => {
+        const handleNewMessage = (payload: MessagePayload) => {
+            const newMessage = payload.new;
+            setChats(currentChats => {
+                const chatIndex = currentChats.findIndex(c => c.chat_id === newMessage.chat_id);
+                // If the chat is already in the list, update it and move it to the top.
+                if (chatIndex > -1) {
+                    const existingChat = { ...currentChats[chatIndex] };
+                    existingChat.last_message = newMessage.content;
+                    existingChat.last_message_time = newMessage.created_at;
+
+                    const newChats = [
+                        existingChat,
+                        ...currentChats.slice(0, chatIndex),
+                        ...currentChats.slice(chatIndex + 1)
+                    ];
+                    return newChats;
+                } else {
+                    // If it's a new chat, we still need to fetch the list to get participant details.
+                    // This is a rare case (first message in a new chat).
+                    fetchChats();
+                    return currentChats;
+                }
+            });
+        };
+
         const messageChannel = supabase
             .channel('public:messages:chat_list')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, fetchChats)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, handleNewMessage)
             .subscribe();
+
+        // Profile updates can still use the full refetch as they are less frequent.
         const profileChannel = supabase
             .channel('public:profiles:chat_list')
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, fetchChats)
             .subscribe();
+
         return () => {
             supabase.removeChannel(messageChannel);
             supabase.removeChannel(profileChannel);
         };
     }, [fetchChats]);
+    // --- MODIFICATION END ---
+
 
     const renderChatItem = ({ item }: { item: Chat }) => {
         const isUnread = unreadChats.has(item.chat_id);
@@ -145,7 +187,7 @@ export default function ChatListScreen() {
     };
 
     const filteredChats = chats.filter(chat =>
-        chat.other_user_name.toLowerCase().includes(searchText.toLowerCase())
+        (chat.other_user_name || '').toLowerCase().includes(searchText.toLowerCase())
     );
 
     return (

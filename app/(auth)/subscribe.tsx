@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, Platform, ScrollView, Alert, ActivityIndicator, Switch } from 'react-native';
 import { getThemeColors, Theme } from '@/theme/colors';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/lib/SessionProvider';
@@ -18,11 +18,13 @@ const subscriptionPlans = {
     farm_s: { id: 'farm_s', icon: 'tractor-variant' },
     farm_m: { id: 'farm_m', icon: 'tractor-variant' },
     farm_l: { id: 'farm_l', icon: 'tractor-variant' },
+    farm_s_yearly: { id: 'farm_s_yearly', icon: 'tractor-variant' },
+    farm_m_yearly: { id: 'farm_m_yearly', icon: 'tractor-variant' },
+    farm_l_yearly: { id: 'farm_l_yearly', icon: 'tractor-variant' },
 };
 
 const PlanCard = ({ plan, onSelect, isSelected, t }: any) => {
     const planKey = plan.id;
-    // Fetches translated details for the specific plan
     const details = t(`subscribe.plans.${planKey}`, { returnObjects: true });
 
     return (
@@ -44,11 +46,7 @@ const PlanCard = ({ plan, onSelect, isSelected, t }: any) => {
                     </View>
                 ))}
             </View>
-            {plan.id === 'farm_l' && (
-                <View style={styles.topPlacementBanner}>
-                    <Text style={styles.topPlacementText}>{details.features.find((f: string) => f.toLowerCase().includes('top placement') || f.toLowerCase().includes('top-platzierung'))}</Text>
-                </View>
-            )}
+            {plan.id.includes('farm_l') && <View style={styles.topPlacementBanner}><Text style={styles.topPlacementText}>{details.features.find((f: string) => f.toLowerCase().includes('top placement') || f.toLowerCase().includes('top-platzierung'))}</Text></View>}
         </TouchableOpacity>
     );
 };
@@ -56,60 +54,46 @@ const PlanCard = ({ plan, onSelect, isSelected, t }: any) => {
 export default function SubscriptionScreen() {
     const { t } = useTranslation();
     const { session } = useSession();
-    const [profile, setProfile] = useState<{ role: string, full_name?: string, username?: string } | null>(null);
+    const [profile, setProfile] = useState<{ role: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [isSubscribing, setIsSubscribing] = useState(false);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+    const [isYearly, setIsYearly] = useState(false); // New state for the toggle
 
     useEffect(() => {
         if (session?.user) {
-            supabase.from('profiles').select('role, full_name, username').eq('id', session.user.id).single()
+            supabase.from('profiles').select('role').eq('id', session.user.id).single()
                 .then(({ data, error }) => {
-                    if (error) {
-                        Alert.alert("Error", "Could not fetch your profile details.");
-                        console.error(error);
-                    } else if (data) {
+                    if (error) Alert.alert("Error", "Could not fetch profile.");
+                    else if (data) {
                         setProfile(data);
-                        // Auto-select the plan if there's only one option for the user's role
                         if (data.role === 'Arbeitnehmer') setSelectedPlanId('employee_yearly');
                         if (data.role === 'Rechnungsschreiber') setSelectedPlanId('admin_monthly');
                     }
                     setLoading(false);
                 });
-        } else {
-            setLoading(false);
-        }
+        } else { setLoading(false); }
     }, [session]);
 
     const handlePurchase = async () => {
         if (!selectedPlanId) {
-            Alert.alert("No Plan Selected", "Please choose a subscription plan to continue.");
+            Alert.alert("No Plan Selected", "Please choose a subscription plan.");
             return;
         }
         setIsSubscribing(true);
-
-        // In a real app, this is where you would trigger the RevenueCat purchase flow.
-        // For now, we simulate success and call our Supabase function.
-        const { error } = await supabase.rpc('subscribe_to_plan', {
-            plan_id_input: selectedPlanId
-        });
-
+        const { error } = await supabase.rpc('subscribe_to_plan', { plan_id_input: selectedPlanId });
         setIsSubscribing(false);
         if (error) {
             Alert.alert(t('subscribe.purchaseErrorTitle'), t('subscribe.updateError'));
             console.error("Subscription RPC error:", error);
         } else {
-            router.replace('/(tabs)'); // Redirect to the app on success
+            router.replace('/(tabs)');
         }
     };
 
     const renderPlans = () => {
-        if (loading) {
-            return <ActivityIndicator size="large" color={themeColors.primary} style={{ marginTop: 40 }} />;
-        }
-        if (!profile) {
-            return <Text style={styles.subtitle}>Could not load profile information.</Text>;
-        }
+        if (loading) return <ActivityIndicator size="large" color={themeColors.primary} style={{ marginTop: 40 }} />;
+        if (!profile) return <Text style={styles.subtitle}>Could not load profile information.</Text>;
 
         switch (profile.role) {
             case 'Arbeitnehmer':
@@ -117,11 +101,30 @@ export default function SubscriptionScreen() {
             case 'Rechnungsschreiber':
                 return <PlanCard plan={subscriptionPlans.admin} onSelect={setSelectedPlanId} isSelected={true} t={t} />;
             case 'Betrieb':
+                const farmPlans = isYearly
+                    ? [subscriptionPlans.farm_s_yearly, subscriptionPlans.farm_m_yearly, subscriptionPlans.farm_l_yearly]
+                    : [subscriptionPlans.farm_s, subscriptionPlans.farm_m, subscriptionPlans.farm_l];
                 return (
                     <>
-                        <PlanCard plan={subscriptionPlans.farm_s} onSelect={setSelectedPlanId} isSelected={selectedPlanId === 'farm_s'} t={t} />
-                        <PlanCard plan={subscriptionPlans.farm_m} onSelect={setSelectedPlanId} isSelected={selectedPlanId === 'farm_m'} t={t} />
-                        <PlanCard plan={subscriptionPlans.farm_l} onSelect={setSelectedPlanId} isSelected={selectedPlanId === 'farm_l'} t={t} />
+                        <View style={styles.toggleContainer}>
+                            <Text style={styles.toggleLabel}>{t('subscribe.monthly')}</Text>
+                            <Switch
+                                value={isYearly}
+                                onValueChange={(value) => {
+                                    setIsYearly(value);
+                                    setSelectedPlanId(null); // Reset selection when changing billing cycle
+                                }}
+                                trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary }}
+                                thumbColor={themeColors.background}
+                            />
+                            <Text style={styles.toggleLabel}>{t('subscribe.yearly')}</Text>
+                            <View style={styles.saveBadge}>
+                                <Text style={styles.saveBadgeText}>{t('subscribe.save10')}</Text>
+                            </View>
+                        </View>
+                        {farmPlans.map(plan => (
+                            <PlanCard key={plan.id} plan={plan} onSelect={setSelectedPlanId} isSelected={selectedPlanId === plan.id} t={t} />
+                        ))}
                     </>
                 );
             default:
@@ -173,5 +176,10 @@ const styles = StyleSheet.create({
     disabledButton: { backgroundColor: themeColors.surfaceHighlight },
     buttonText: { fontFamily: baseFontFamily, color: '#fff', fontSize: 18, fontWeight: 'bold' },
     logoutButton: { marginTop: 16, alignItems: 'center' },
-    logoutText: { color: themeColors.textSecondary, fontSize: 14 }
+    logoutText: { color: themeColors.textSecondary, fontSize: 14 },
+    // --- NEW STYLES for the toggle ---
+    toggleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, backgroundColor: themeColors.surface, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 12 },
+    toggleLabel: { fontSize: 16, fontWeight: '600', color: themeColors.text, marginHorizontal: 8 },
+    saveBadge: { backgroundColor: themeColors.success, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginLeft: 12 },
+    saveBadgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
 });
