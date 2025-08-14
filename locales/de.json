@@ -151,6 +151,17 @@
     "selectRegion": "Region auswählen...",
     "useFarmAddress": "Betriebsadresse verwenden"
   },
+  "forgotPassword": {
+    "title": "Passwort vergessen?",
+    "subtitle": "Kein Problem. Geben Sie die mit Ihrem Konto verknüpfte E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
+    "emailLabel": "E-Mail-Adresse",
+    "buttonText": "Reset-Link senden",
+    "backToLogin": "Zurück zum Login",
+    "successTitle": "Überprüfen Sie Ihre E-Mails",
+    "successMessage": "Wenn ein Konto mit dieser E-Mail-Adresse existiert, haben wir einen Link zum Zurücksetzen des Passworts dorthin gesendet.",
+    "errorTitle": "Fehler",
+    "errorMessage": "Der Reset-Link konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+  },
   "myJobs": {
     "addJobButton": "Neue Stelle hinzufügen",
     "addJobPrompt": "Erstellen Sie jetzt Ihr erstes Stellenangebot!",
@@ -328,6 +339,10 @@
     "purchaseErrorTitle": "Kauf Fehlgeschlagen",
     "purchaseErrorMessage": "Wir konnten Ihren Kauf nicht abschließen. Bitte versuchen Sie es erneut.",
     "updateError": "Ihr Abonnementstatus konnte nicht aktualisiert werden.",
+    "billingCycle": "Abrechnungszeitraum",
+    "monthly": "Monatlich",
+    "yearly": "Jährlich",
+    "save10": "10% sparen",
     "plans": {
       "employee_yearly": {
         "title": "Arbeitnehmer-Plan",
@@ -359,29 +374,23 @@
         "period": "/ Monat",
         "features": ["20 Jobanzeigen inklusive", "10 SOS-Alarme inklusive", "Top-Platzierung in den Joblisten"]
       },
-      "billingCycle": "Abrechnungszeitraum",
-      "monthly": "Monatlich",
-      "yearly": "Jährlich",
-      "save10": "10% sparen",
-      "plans": {
-        "farm_s_yearly": {
-          "title": "Betriebs-Paket S (Jährlich)",
-          "price": "86,29€",
-          "period": "/ Jahr",
-          "features": ["120 Jobanzeigen inklusive", "0 SOS-Alarme inklusive"]
-        },
-        "farm_m_yearly": {
-          "title": "Betriebs-Paket M (Jährlich)",
-          "price": "215,89€",
-          "period": "/ Jahr",
-          "features": ["240 Jobanzeigen inklusive", "60 SOS-Alarme inklusive"]
-        },
-        "farm_l_yearly": {
-          "title": "Betriebs-Paket L (Jährlich)",
-          "price": "377,89€",
-          "period": "/ Jahr",
-          "features": ["240 Jobanzeigen inklusive", "120 SOS-Alarme inklusive", "Top-Platzierung in den Joblisten"]
-        }
+      "farm_s_yearly": {
+        "title": "Betriebs-Paket S (Jährlich)",
+        "price": "86,29€",
+        "period": "/ Jahr",
+        "features": ["120 Jobanzeigen inklusive", "0 SOS-Alarme inklusive"]
+      },
+      "farm_m_yearly": {
+        "title": "Betriebs-Paket M (Jährlich)",
+        "price": "215,89€",
+        "period": "/ Jahr",
+        "features": ["240 Jobanzeigen inklusive", "60 SOS-Alarme inklusive"]
+      },
+      "farm_l_yearly": {
+        "title": "Betriebs-Paket L (Jährlich)",
+        "price": "377,89€",
+        "period": "/ Jahr",
+        "features": ["240 Jobanzeigen inklusive", "120 SOS-Alarme inklusive", "Top-Platzierung in den Joblisten"]
       }
     }
   }

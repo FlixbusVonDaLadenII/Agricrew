@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView,
     ActivityIndicator, Alert, Platform, Switch, Modal, FlatList, StatusBar,
-    KeyboardAvoidingView, Animated, Keyboard
+    KeyboardAvoidingView, Keyboard, Animated
 } from 'react-native';
 import { getThemeColors, Theme } from '@/theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Session } from '@supabase/supabase-js';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -97,14 +97,9 @@ export default function AddJobScreen() {
             const countryCode = country === 'germany' ? 'de' : country === 'austria' ? 'at' : 'ch';
             const response = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_API_KEY}&q=${encodeURIComponent(query)}&countrycodes=${countryCode}&limit=5&format=json&accept-language=${i18n.language}`);
             const data = await response.json();
-            if (data && !data.error) {
-                setLocationSuggestions(data);
-            } else {
-                setLocationSuggestions([]);
-            }
-        } catch (error) {
-            console.error("Failed to fetch location suggestions:", error);
-        }
+            if (data && !data.error) setLocationSuggestions(data);
+            else setLocationSuggestions([]);
+        } catch (error) { console.error("Failed to fetch location suggestions:", error); }
     };
 
     const onLocationSuggestionSelect = (suggestion: LocationIQSuggestion) => {
@@ -123,12 +118,9 @@ export default function AddJobScreen() {
     useEffect(() => {
         if (session?.user) {
             setLoadingUser(true);
-            supabase.from('profiles')
-                .select('role, farm_location_address, farm_latitude, farm_longitude')
-                .eq('id', session.user.id)
-                .single()
+            supabase.from('profiles').select('role, farm_location_address, farm_latitude, farm_longitude').eq('id', session.user.id).single()
                 .then(({ data, error }) => {
-                    if (error) { console.error('Error fetching user profile:', error); }
+                    if (error) console.error('Error fetching user profile:', error);
                     setFarmProfile(data as FarmProfileData | null);
                     setLoadingUser(false);
                 });
@@ -161,21 +153,13 @@ export default function AddJobScreen() {
 
     const handlePurchaseSos = async () => {
         Alert.alert("Purchase Simulation", "This would open the RevenueCat purchase flow for a single SOS tag.");
-        // --- THIS IS WHERE YOU WOULD INTEGRATE REVENUECAT ---
-        // After a successful purchase, you would call your Supabase function:
-        // const { error } = await supabase.rpc('purchase_single_sos', { user_id_input: session!.user.id });
-        // if (!error) {
-        //   Alert.alert("Success", "SOS tag added to your account!");
-        // }
     }
 
     const handleAddJob = async () => {
         if (farmProfile?.role !== 'Betrieb' || !session?.user) { Alert.alert(t('addJob.permissionDeniedTitle'), t('addJob.permissionDenied')); return; }
         if (!title || !description || !location || !country || !region) { Alert.alert(t('addJob.alertMissingFields'), t('addJob.alertMissingFieldsMessage')); return; }
-        if (!selectedLocationCoords) {
-            Alert.alert(t('addJob.alertInvalidLocation'), t('addJob.alertInvalidLocationMessage'));
-            return;
-        }
+        if (!selectedLocationCoords) { Alert.alert(t('addJob.alertInvalidLocation'), t('addJob.alertInvalidLocationMessage')); return; }
+
         setSubmitting(true);
 
         try {
@@ -189,9 +173,7 @@ export default function AddJobScreen() {
             if (isUrgent) {
                 const { data: canPostSos, error: sosQuotaError } = await supabase.rpc('can_post_sos', { farm_id_input: session.user.id });
                 if (sosQuotaError || !canPostSos) {
-                    Alert.alert(
-                        t('addJob.sosQuotaExceededTitle'),
-                        t('addJob.sosQuotaExceededMessage'),
+                    Alert.alert(t('addJob.sosQuotaExceededTitle'), t('addJob.sosQuotaExceededMessage'),
                         [
                             { text: t('common.cancel'), style: 'cancel' },
                             { text: t('addJob.purchaseButton'), onPress: handlePurchaseSos }
@@ -215,15 +197,9 @@ export default function AddJobScreen() {
 
             const { error } = await supabase.from('jobs').insert({
                 title, description, location, country, region,
-                salary_per_hour: salaryToInsert,
-                required_licenses: selectedLicenses,
-                job_type: jobTypes,
-                is_active: isActive,
-                is_urgent: isUrgent,
-                offers_accommodation: offersAccommodation,
-                farm_id: session.user.id,
-                latitude: selectedLocationCoords.lat,
-                longitude: selectedLocationCoords.lng,
+                salary_per_hour: salaryToInsert, required_licenses: selectedLicenses, job_type: jobTypes,
+                is_active: isActive, is_urgent: isUrgent, offers_accommodation: offersAccommodation,
+                farm_id: session.user.id, latitude: selectedLocationCoords.lat, longitude: selectedLocationCoords.lng,
             });
 
             if (error) { throw error; }
@@ -237,8 +213,7 @@ export default function AddJobScreen() {
             setTitle(''); setDescription(''); setLocation('');
             setCountry(countryKeys[0]); setRegion(''); setSalaryPerHour('');
             setSelectedLicenses([]); setJobTypes([]); setIsActive(true); setIsUrgent(false);
-            setOffersAccommodation(false);
-            setSelectedLocationCoords(null);
+            setOffersAccommodation(false); setSelectedLocationCoords(null);
             router.replace('/(tabs)');
 
         } catch (error: any) {
@@ -268,49 +243,44 @@ export default function AddJobScreen() {
         outputRange: [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT + insets.top],
         extrapolate: 'clamp',
     });
-
     const titleScale = scrollY.interpolate({
         inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
         outputRange: [1, 1, 0.8],
         extrapolate: 'clamp',
     });
-
     const titleTranslateY = scrollY.interpolate({
         inputRange: [0, HEADER_SCROLL_DISTANCE],
         outputRange: [0, -20],
         extrapolate: 'clamp',
     });
 
-
     if (loadingUser) { return <View style={styles.centeredContainer}><ActivityIndicator size="large" color={themeColors.primary} /></View>; }
-
     if (farmProfile?.role !== 'Betrieb') {
         return (
-            <SafeAreaView style={styles.safeAreaContainer}>
-                <View style={styles.headerStatic}><Text style={styles.pageTitleStatic}>{t('addJob.pageTitle')}</Text></View>
+            <View style={styles.safeAreaContainer}>
+                <View style={[styles.headerStatic, { paddingTop: insets.top }]}><Text style={styles.pageTitleStatic}>{t('addJob.pageTitle')}</Text></View>
                 <View style={styles.permissionDeniedContainer}>
                     <MaterialCommunityIcons name="lock-alert-outline" size={80} color={themeColors.textSecondary} />
                     <Text style={styles.permissionDeniedText}>{t('addJob.permissionDenied')}</Text>
                 </View>
-            </SafeAreaView>
+            </View>
         );
     }
-
     return (
-        <SafeAreaView style={styles.safeAreaContainer} edges={['left', 'right']}>
+        <View style={styles.safeAreaContainer}>
             <StatusBar barStyle="light-content" />
             <Animated.View style={[styles.header, { height: headerHeight }]}>
                 <Animated.View style={[{ transform: [{ scale: titleScale }, { translateY: titleTranslateY }] }]}>
                     <Text style={styles.pageTitle}>{t('addJob.pageTitle')}</Text>
                 </Animated.View>
             </Animated.View>
-
-            <Animated.ScrollView
-                contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT, paddingBottom: insets.bottom + 20 }}
-                scrollEventThrottle={16}
-                onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-            >
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <Animated.ScrollView
+                    contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT, paddingBottom: insets.bottom + 20 }}
+                    scrollEventThrottle={16}
+                    onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+                    keyboardShouldPersistTaps="handled"
+                >
                     <View style={styles.formContainer}>
                         <View style={styles.sectionCard}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionJobDetails')}</Text>
@@ -319,7 +289,6 @@ export default function AddJobScreen() {
                             <Text style={styles.label}>{t('addJob.labelDescription')} <Text style={styles.requiredIndicator}>*</Text></Text>
                             <TextInput style={[styles.input, styles.textArea]} placeholder={t('addJob.placeholderDescription')} placeholderTextColor={themeColors.textHint} multiline value={description} onChangeText={setDescription} />
                         </View>
-
                         <View style={styles.sectionCard}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionLocation')}</Text>
                             {farmProfile?.farm_location_address && (
@@ -357,44 +326,34 @@ export default function AddJobScreen() {
                                 />
                             )}
                         </View>
-
                         <View style={styles.sectionCard}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionCompensation')}</Text>
                             <Text style={styles.label}>{t('addJob.labelSalary')}</Text>
                             <TextInput style={styles.input} placeholder={t('addJob.placeholderSalary')} placeholderTextColor={themeColors.textHint} keyboardType="numeric" value={salaryPerHour} onChangeText={setSalaryPerHour} />
                             <Text style={styles.label}>{t('addJob.labelJobType')}</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.jobTypeScrollContainer}>{jobTypeKeys.map((key, index) => { return (<TouchableOpacity key={`job-type-${key}-${index}`} style={[styles.jobTypeButton, jobTypes.includes(key) && styles.jobTypeButtonSelected]} onPress={() => toggleJobType(key)}><Text style={[styles.jobTypeText, jobTypes.includes(key) && styles.jobTypeTextSelected]}>{jobTypesOptions[key]}</Text></TouchableOpacity>); })}</ScrollView>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.jobTypeScrollContainer}>{jobTypeKeys.map((key) => { return (<TouchableOpacity key={key} style={[styles.jobTypeButton, jobTypes.includes(key) && styles.jobTypeButtonSelected]} onPress={() => toggleJobType(key)}><Text style={[styles.jobTypeText, jobTypes.includes(key) && styles.jobTypeTextSelected]}>{jobTypesOptions[key]}</Text></TouchableOpacity>); })}</ScrollView>
                         </View>
-
                         <View style={styles.sectionCard}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionRequirements')}</Text>
                             <Text style={styles.label}>{t('addJob.labelLicenses')}</Text>
-                            <View style={styles.licensesContainer}>{DRIVING_LICENSES.map((license, index) => (<TouchableOpacity key={`license-${license}-${index}`} style={[styles.licenseCheckbox, selectedLicenses.includes(license) && styles.licenseCheckboxSelected]} onPress={() => toggleLicense(license)}><Text style={[styles.licenseText, selectedLicenses.includes(license) && styles.licenseTextSelected]}>{license}</Text></TouchableOpacity>))}</View>
+                            <View style={styles.licensesContainer}>{DRIVING_LICENSES.map((license) => (<TouchableOpacity key={license} style={[styles.licenseCheckbox, selectedLicenses.includes(license) && styles.licenseCheckboxSelected]} onPress={() => toggleLicense(license)}><Text style={[styles.licenseText, selectedLicenses.includes(license) && styles.licenseTextSelected]}>{license}</Text></TouchableOpacity>))}</View>
                         </View>
-
                         <View style={styles.sectionCard}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionStatus')}</Text>
                             <View style={styles.toggleRow}><Text style={styles.label}>{t('addJob.labelActive')}</Text><Switch trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary + '80' }} thumbColor={isActive ? themeColors.primary : themeColors.textSecondary} onValueChange={setIsActive} value={isActive} /></View>
                             <View style={styles.toggleRow}><Text style={styles.label}>{t('addJob.labelUrgent')}</Text><Switch trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary + '80' }} thumbColor={isUrgent ? themeColors.primary : themeColors.textSecondary} onValueChange={setIsUrgent} value={isUrgent} /></View>
                             <View style={styles.toggleRow}>
                                 <Text style={styles.label}>{t('addJob.labelOffersAccommodation')}</Text>
-                                <Switch
-                                    trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary + '80' }}
-                                    thumbColor={offersAccommodation ? themeColors.primary : themeColors.textSecondary}
-                                    onValueChange={setOffersAccommodation}
-                                    value={offersAccommodation}
-                                />
+                                <Switch trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary + '80' }} thumbColor={offersAccommodation ? themeColors.primary : themeColors.textSecondary} onValueChange={setOffersAccommodation} value={offersAccommodation} />
                             </View>
                         </View>
-
                         <TouchableOpacity style={styles.submitButton} onPress={handleAddJob} disabled={submitting}>{submitting ? <ActivityIndicator color={themeColors.background} /> : <Text style={styles.submitButtonText}>{t('addJob.buttonPublish')}</Text>}</TouchableOpacity>
                     </View>
-                </KeyboardAvoidingView>
-            </Animated.ScrollView>
-
+                </Animated.ScrollView>
+            </KeyboardAvoidingView>
             <Modal animationType="slide" transparent={true} visible={countryPickerVisible} onRequestClose={handleCountrySelectionCancel}><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>{t('addJob.modalSelectCountry')}</Text><TextInput style={styles.modalSearchInput} placeholder={t('addJob.modalSearchPlaceholder')} value={countrySearch} onChangeText={setCountrySearch} placeholderTextColor={themeColors.textHint} /><FlatList data={filteredCountries} keyExtractor={item => item} renderItem={({ item }) => renderPickerItem({ item, isCountryPicker: true, tempValue: tempCountry, setTempValue: setTempCountry })} ListEmptyComponent={!filteredCountries.length ? <Text style={styles.emptyListText}>{t('addJob.modalNoResults')}</Text> : null} style={styles.listContainer} /><View style={styles.modalButtonContainer}><TouchableOpacity style={[styles.modalActionButton, styles.modalCancelButton]} onPress={handleCountrySelectionCancel}><Text style={styles.modalCancelButtonText}>{t('common.cancel')}</Text></TouchableOpacity><TouchableOpacity style={[styles.modalActionButton, styles.modalDoneButton]} onPress={handleCountrySelectionDone}><Text style={styles.modalDoneButtonText}>{t('common.done')}</Text></TouchableOpacity></View></View></View></Modal>
             <Modal animationType="slide" transparent={true} visible={regionPickerVisible} onRequestClose={handleRegionSelectionCancel}><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>{t('addJob.modalSelectRegion')}</Text><TextInput style={styles.modalSearchInput} placeholder={t('addJob.modalSearchPlaceholder')} value={regionSearch} onChangeText={setRegionSearch} placeholderTextColor={themeColors.textHint} /><FlatList data={filteredRegions} keyExtractor={item => item} renderItem={({ item }) => renderPickerItem({ item, isCountryPicker: false, tempValue: tempRegion, setTempValue: setTempRegion })} ListEmptyComponent={!filteredRegions.length ? <Text style={styles.emptyListText}>{t('addJob.modalNoResults')}</Text> : null} style={styles.listContainer} /><View style={styles.modalButtonContainer}><TouchableOpacity style={[styles.modalActionButton, styles.modalCancelButton]} onPress={handleRegionSelectionCancel}><Text style={styles.modalCancelButtonText}>{t('common.cancel')}</Text></TouchableOpacity><TouchableOpacity style={[styles.modalActionButton, styles.modalDoneButton]} onPress={handleRegionSelectionDone}><Text style={styles.modalDoneButtonText}>{t('common.done')}</Text></TouchableOpacity></View></View></View></Modal>
-        </SafeAreaView>
+        </View>
     );
 }
 

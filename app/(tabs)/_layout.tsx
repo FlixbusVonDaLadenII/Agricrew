@@ -61,8 +61,6 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                // MODIFIED: Changed name to 'profile' for consistency with ProfileScreen.tsx and translations
-                // Ensure your file is named (tabs)/profile.tsx
                 name="settings"
                 options={{
                     title: t('tabs.profile'),

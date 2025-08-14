@@ -46,10 +46,10 @@ interface Profile {
     number_of_employees?: string;
     accommodation_offered?: boolean;
     machinery_brands?: string[];
-    experience?: string[];
+    experience?: string[] | null; // Can be null
     age?: number | null;
     availability?: string | null;
-    driving_licenses?: string[] | null;
+    driving_licenses?: string[] | null; // Can be null
 }
 interface Message {
     id: string;
@@ -294,8 +294,6 @@ export default function ChatScreen() {
                 style={styles.keyboardAvoidingContainer}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
-                {/* --- THIS IS THE FIX --- */}
-                {/* The ChatHeader is now here, above the FlatList, and will only show when all messages are loaded */}
                 {!hasMoreMessages && <ChatHeader otherUser={otherUser} firstMessageDate={firstMessageDate} />}
 
                 <FlatList
@@ -321,13 +319,81 @@ export default function ChatScreen() {
             </KeyboardAvoidingView>
 
             <Modal animationType="slide" transparent={true} visible={isProfileModalVisible} onRequestClose={() => setProfileModalVisible(false)}>
-                {/* ... Modal code remains the same ... */}
+                <View style={styles.modalCenteredView}>
+                    <View style={styles.modalView}>
+                        {isProfileLoading ? <ActivityIndicator size="large" color={themeColors.primary} /> : selectedProfile ? (
+                            <>
+                                <ScrollView showsVerticalScrollIndicator={false}>
+                                    <View style={styles.modalAvatarContainer}>
+                                        {selectedProfile.avatar_url ? (
+                                            <Image source={{ uri: selectedProfile.avatar_url }} style={styles.modalAvatar} />
+                                        ) : (
+                                            <View style={styles.modalAvatarPlaceholder}>
+                                                <MaterialCommunityIcons name="account" size={40} color={themeColors.textSecondary} />
+                                            </View>
+                                        )}
+                                    </View>
+                                    <Text style={styles.profileName}>
+                                        {selectedProfile.role === 'Betrieb'
+                                            ? selectedProfile.full_name
+                                            : selectedProfile.username || selectedProfile.full_name}
+                                    </Text>
+
+                                    {selectedProfile.role === 'Betrieb' ? (
+                                        <>
+                                            {selectedProfile.farm_description && (<><Text style={styles.profileSectionTitle}>{t('jobList.profile.about')}</Text><Text style={styles.profileDescription}>{selectedProfile.farm_description}</Text></>)}
+                                            <Text style={styles.profileSectionTitle}>{t('jobList.profile.details')}</Text>
+                                            <ProfileInfoRow icon="pine-tree" label={t('jobList.profile.farmSize')} value={selectedProfile.farm_size_hectares ? `${selectedProfile.farm_size_hectares} ha` : null} />
+                                            <ProfileInfoRow icon="account-group-outline" label={t('jobList.profile.employees')} value={selectedProfile.number_of_employees} />
+                                            <ProfileInfoRow icon="sprout-outline" label={t('jobList.profile.specializations')} value={selectedProfile.farm_specialization?.join(', ')} />
+                                            <ProfileInfoRow icon="tractor" label={t('jobList.profile.machinery')} value={selectedProfile.machinery_brands?.join(', ')} />
+                                            <ProfileInfoRow icon="home-city-outline" label={t('jobList.profile.accommodation')} value={selectedProfile.accommodation_offered ? t('jobList.profile.yes') : t('jobList.profile.no')} />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Text style={styles.profileSectionTitle}>{t('profile.personalDetails')}</Text>
+                                            <ProfileInfoRow icon="cake-variant-outline" label={t('profile.age')} value={selectedProfile.age} />
+                                            <ProfileInfoRow icon="calendar-clock-outline" label={t('profile.availability')} value={selectedProfile.availability} />
+                                            <Text style={styles.profileSectionTitle}>{t('profile.drivingLicenses')}</Text>
+
+                                            {/* --- THIS IS THE FIX --- */}
+                                            {(selectedProfile.driving_licenses || []).length > 0 ? (
+                                                <View style={styles.chipsContainer}>
+                                                    {selectedProfile.driving_licenses!.map(license => (
+                                                        <View key={license} style={styles.chip}>
+                                                            <Text style={styles.chipText}>{license}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            ) : <Text style={styles.profileInfoValue}>{t('chat.noLicenses')}</Text>}
+
+                                            <Text style={styles.profileSectionTitle}>{t('profile.myExperience')}</Text>
+
+                                            {/* --- THIS IS THE FIX --- */}
+                                            {(selectedProfile.experience || []).length > 0 ? (
+                                                <View style={styles.chipsContainer}>
+                                                    {selectedProfile.experience!.map(item => (
+                                                        <View key={item} style={styles.chip}>
+                                                            <Text style={styles.chipText}>{t(`experiences.${item}`)}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            ) : <Text style={styles.profileInfoValue}>{t('chat.noExperience')}</Text>}
+                                        </>
+                                    )}
+                                </ScrollView>
+                                <TouchableOpacity style={styles.modalCloseButton} onPress={() => setProfileModalVisible(false)}>
+                                    <Text style={styles.modalCloseButtonText}>{t('jobList.profile.done')}</Text>
+                                </TouchableOpacity>
+                            </>
+                        ) : null}
+                    </View>
+                </View>
             </Modal>
         </SafeAreaView>
     );
 }
 
-// ... Your existing styles are correct and do not need to be changed.
 const styles = StyleSheet.create({
     container: {
         flex: 1,

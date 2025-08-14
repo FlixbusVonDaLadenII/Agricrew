@@ -135,7 +135,10 @@ const LoginScreen = () => {
                                     />
                                 </View>
 
-                                <TouchableOpacity style={styles.forgotPasswordButton}>
+                                <TouchableOpacity
+                                    style={styles.forgotPasswordButton}
+                                    onPress={() => router.push('/(auth)/forgot-password')}
+                                >
                                     <Text style={styles.forgotPasswordText}>{t('login.forgotPassword')}</Text>
                                 </TouchableOpacity>
 
@@ -154,7 +157,7 @@ const LoginScreen = () => {
 
                             <View style={styles.signUpContainer}>
                                 <Text style={styles.signUpText}>{t('login.noAccount')} </Text>
-                                <TouchableOpacity onPress={() => router.push('/register')}>
+                                <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
                                     <Text style={styles.signUpLink}>{t('login.signUpLink')}</Text>
                                 </TouchableOpacity>
                             </View>
@@ -186,7 +189,6 @@ const styles = StyleSheet.create({
     signUpContainer: { flexDirection: 'row', marginTop: 40, alignItems: 'center', justifyContent: 'center', width: '100%', },
     signUpText: { fontFamily: baseFontFamily, color: themeColors.textSecondary, fontSize: 15, },
     signUpLink: { fontFamily: baseFontFamily, color: themeColors.primary, fontSize: 15, fontWeight: 'bold', },
-    // --- ADDED: Styles for the language switcher ---
     langContainer: {
         flexDirection: 'row',
         marginBottom: 24,

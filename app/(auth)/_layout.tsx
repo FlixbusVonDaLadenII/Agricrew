@@ -6,23 +6,17 @@ const themeColors = getThemeColors('dark'); // Consistent theme for auth flow
 
 const AuthLayout = () => {
     return (
-        <Stack>
+        <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen
                 name="login" // This refers to app/(auth)/login.tsx
-                options={{
-                    headerShown: false, // Hide header for a clean login screen
-                    // You can set specific header styles here if you want one
-                    // headerStyle: { backgroundColor: themeColors.background },
-                    // headerTintColor: themeColors.text,
-                }}
             />
             <Stack.Screen
                 name="register" // This refers to app/(auth)/register.tsx
-                options={{
-                    headerShown: false, // Hide header for register too
-                }}
             />
-            {/* Add other auth-related screens here if you have them, e.g., forgot-password.tsx */}
+            {/* --- THIS IS THE ADDED LINE --- */}
+            <Stack.Screen
+                name="forgot-password" // This refers to app/(auth)/forgot-password.tsx
+            />
         </Stack>
     );
 };

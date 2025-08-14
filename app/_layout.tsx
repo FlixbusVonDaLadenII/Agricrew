@@ -8,6 +8,7 @@ import { UnreadChatProvider } from '@/contexts/UnreadChatContext';
 import { savePushToken } from '@/lib/notifications';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const themeColors = getThemeColors('dark');
 
@@ -22,7 +23,6 @@ const InitialLayout = () => {
         const inAuthFlow = segments[0] === '(auth)';
 
         if (session && inAuthFlow) {
-            // User is logged in but still in the auth flow, check subscription and redirect
             supabase.rpc('get_user_subscription_status', { user_id_input: session.user.id })
                 .then(({ data: isSubscribed }) => {
                     if (isSubscribed) {
@@ -32,7 +32,6 @@ const InitialLayout = () => {
                     }
                 });
         } else if (!session && !inAuthFlow) {
-            // User is not logged in and not in the auth flow, send to login
             router.replace('/(auth)/login');
         }
     }, [session, isLoading, router]);
@@ -46,9 +45,14 @@ const InitialLayout = () => {
     useEffect(() => {
         const subscription = Notifications.addNotificationResponseReceivedListener(response => {
             const data = response.notification.request.content.data;
-            const chatId = data?.chat_id as string | undefined;
-            if (chatId) {
-                router.push({ pathname: '/(tabs)/chats/[id]', params: { id: chatId } });
+
+            // --- THIS IS THE FIX ---
+            if (data?.type === 'sos_job') {
+                // If it's an SOS job, go to the main job list
+                router.push('/(tabs)');
+            } else if (data?.chat_id) {
+                // If it's a chat notification, go to the chat
+                router.push({ pathname: '/(tabs)/chats/[id]', params: { id: data.chat_id as string } });
             }
         });
         return () => subscription.remove();
@@ -67,18 +71,19 @@ const InitialLayout = () => {
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="my-jobs" options={{ presentation: 'modal' }}/>
-            {/* --- REMOVED THE edit-job SCREEN --- */}
         </Stack>
     );
 }
 
 export default function RootLayout() {
     return (
-        <SessionProvider>
-            <UnreadChatProvider>
-                <InitialLayout />
-            </UnreadChatProvider>
-        </SessionProvider>
+        <SafeAreaProvider>
+            <SessionProvider>
+                <UnreadChatProvider>
+                    <InitialLayout />
+                </UnreadChatProvider>
+            </SessionProvider>
+        </SafeAreaProvider>
     );
 }
 

@@ -171,6 +171,17 @@
     "statusActive": "Active",
     "statusInactive": "Inactive"
   },
+  "forgotPassword": {
+    "title": "Forgot Password?",
+    "subtitle": "No problem. Enter the email address associated with your account and we'll send you a link to reset your password.",
+    "emailLabel": "Email Address",
+    "buttonText": "Send Reset Link",
+    "backToLogin": "Back to Login",
+    "successTitle": "Check Your Email",
+    "successMessage": "If an account with that email exists, we have sent a password reset link to it.",
+    "errorTitle": "Error",
+    "errorMessage": "Could not send reset link. Please try again."
+  },
   "profile": {
     "deleteAccount": "Delete Account",
     "deleteConfirmTitle": "Are you sure?",
@@ -328,6 +339,10 @@
     "purchaseErrorTitle": "Purchase Failed",
     "purchaseErrorMessage": "We could not complete your purchase. Please try again.",
     "updateError": "Could not update your subscription status.",
+    "billingCycle": "Billing Cycle",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "save10": "Save 10%",
     "plans": {
       "employee_yearly": {
         "title": "Employee Plan",
@@ -359,29 +374,23 @@
         "period": "/ month",
         "features": ["20 job posts included", "10 SOS alerts included", "Top placement in listings"]
       },
-      "billingCycle": "Billing Cycle",
-      "monthly": "Monthly",
-      "yearly": "Yearly",
-      "save10": "Save 10%",
-      "plans": {
-        "farm_s_yearly": {
-          "title": "Farm Package S (Yearly)",
-          "price": "€86.29",
-          "period": "/ year",
-          "features": ["120 job posts included", "0 SOS alerts included"]
-        },
-        "farm_m_yearly": {
-          "title": "Farm Package M (Yearly)",
-          "price": "€215.89",
-          "period": "/ year",
-          "features": ["240 job posts included", "60 SOS alerts included"]
-        },
-        "farm_l_yearly": {
-          "title": "Farm Package L (Yearly)",
-          "price": "€377.89",
-          "period": "/ year",
-          "features": ["240 job posts included", "120 SOS alerts included", "Top placement in listings"]
-        }
+      "farm_s_yearly": {
+        "title": "Farm Package S (Yearly)",
+        "price": "€86.29",
+        "period": "/ year",
+        "features": ["120 job posts included", "0 SOS alerts included"]
+      },
+      "farm_m_yearly": {
+        "title": "Farm Package M (Yearly)",
+        "price": "€215.89",
+        "period": "/ year",
+        "features": ["240 job posts included", "60 SOS alerts included"]
+      },
+      "farm_l_yearly": {
+        "title": "Farm Package L (Yearly)",
+        "price": "€377.89",
+        "period": "/ year",
+        "features": ["240 job posts included", "120 SOS alerts included", "Top placement in listings"]
       }
     }
   }
