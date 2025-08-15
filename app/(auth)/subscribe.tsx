@@ -1,4 +1,5 @@
-// app/(auth)/subscribe.tsx
+// app/(auth)/subscribe.tsx - FREE ACCESS VERSION
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     StyleSheet,
@@ -19,14 +20,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import {
-    getProductsAsync,
-    setPurchaseListener,
-    purchaseItemAsync,
-    finishTransactionAsync,
-    IAPResponseCode,
-    IAPItemDetails,
-} from 'expo-in-app-purchases';
+// NOTE: All 'expo-in-app-purchases' imports are removed in this version.
 
 // ===== Theme setup =====
 const currentTheme: Theme = 'dark';
@@ -41,19 +35,7 @@ const baseFontFamily = Platform.select({
 type Profile = { role: string } | null;
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-// ===== Product IDs =====
-const APPLE_PRODUCT_IDS = {
-    employee_yearly: 'agricrew.employee_yearly',
-    admin_monthly: 'agricrew.admin_monthly',
-    farm_s: 'agricrew.farm_s',
-    farm_m: 'agricrew.farm_m',
-    farm_l: 'agricrew.farm_l',
-    farm_s_yearly: 'agricrew.farm_s_yearly',
-    farm_m_yearly: 'agricrew.farm_m_yearly',
-    farm_l_yearly: 'agricrew.farm_l_yearly',
-} as const;
-
-// ===== Subscription Plans =====
+// ===== Subscription Plans (used for display only) =====
 const subscriptionPlans = {
     employee: { id: 'employee_yearly', icon: 'account-hard-hat' as IconName },
     admin: { id: 'admin_monthly', icon: 'file-document-outline' as IconName },
@@ -66,23 +48,10 @@ const subscriptionPlans = {
 } as const;
 
 // ===== PlanCard Component =====
-interface PlanCardProps {
-    plan: { id: string; icon: IconName };
-    onSelect: (planId: string) => void;
-    isSelected: boolean;
-    t: (key: string, options?: any) => any;
-    product?: IAPItemDetails;
-}
-
-const PlanCard: React.FC<PlanCardProps> = ({
-                                               plan,
-                                               onSelect,
-                                               isSelected,
-                                               t,
-                                               product,
-                                           }) => {
+const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, t }) => {
     const details = t(`subscribe.plans.${plan.id}`, { returnObjects: true });
-    const displayPrice = product?.price ?? details.price;
+    // Prices are now only taken from your JSON files for display
+    const displayPrice = details.price;
 
     return (
         <TouchableOpacity
@@ -102,11 +71,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
             <View style={styles.featuresContainer}>
                 {details.features.map((feature: string) => (
                     <View key={feature} style={styles.featureItem}>
-                        <MaterialCommunityIcons
-                            name="check"
-                            size={16}
-                            color={themeColors.success}
-                        />
+                        <MaterialCommunityIcons name="check" size={16} color={themeColors.success} />
                         <Text style={styles.featureText}>{feature}</Text>
                     </View>
                 ))}
@@ -125,92 +90,26 @@ export default function SubscriptionScreen() {
     const [isSubscribing, setIsSubscribing] = useState(false);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [isYearly, setIsYearly] = useState(false);
-    const [products, setProducts] = useState<IAPItemDetails[]>([]);
 
-    const fetchProducts = useCallback(async () => {
-        const productIdsToFetch = Object.values(APPLE_PRODUCT_IDS);
-        try {
-            const { responseCode, results } = await getProductsAsync(productIdsToFetch);
-            if (responseCode === IAPResponseCode.OK) {
-                setProducts(results || []);
-            } else {
-                Alert.alert(t('subscribe.errorTitle'), t('subscribe.productFetchError'));
-            }
-        } catch (e) {
-            console.error('Failed to fetch products', e);
-            Alert.alert(t('subscribe.errorTitle'), t('subscribe.productFetchError'));
-        }
-    }, [t]);
-
+    // This function now calls your new Supabase RPC to grant free access
     const handlePurchase = async () => {
         if (!selectedPlanId) return;
-
-        const appleProductId =
-            APPLE_PRODUCT_IDS[selectedPlanId as keyof typeof APPLE_PRODUCT_IDS];
-        if (!appleProductId || !products.find((p) => p.productId === appleProductId)) {
-            Alert.alert(
-                t('subscribe.productUnavailableTitle'),
-                t('subscribe.productUnavailableMsg')
-            );
-            return;
-        }
-
         setIsSubscribing(true);
-        try {
-            await purchaseItemAsync(appleProductId);
-        } catch (error: any) {
-            Alert.alert(t('subscribe.purchaseErrorTitle'), error.message);
-            setIsSubscribing(false);
-        }
-    };
 
-    useEffect(() => {
-        fetchProducts();
-
-        const listener = setPurchaseListener(async ({ responseCode, results, errorCode }) => {
-            if (responseCode === IAPResponseCode.OK && results) {
-                for (const purchase of results) {
-                    if (!purchase.acknowledged) {
-                        setIsSubscribing(true);
-                        const { error } = await supabase.functions.invoke(
-                            'verify-apple-purchase',
-                            {
-                                body: {
-                                    receipt: purchase.transactionReceipt,
-                                    productId: purchase.productId,
-                                },
-                            }
-                        );
-
-                        if (error) {
-                            Alert.alert(
-                                t('subscribe.purchaseErrorTitle'),
-                                t('subscribe.updateError')
-                            );
-                        } else {
-                            await finishTransactionAsync(purchase, true);
-                            Alert.alert(t('subscribe.successTitle'), t('subscribe.successMsg'));
-                            router.replace('/(tabs)');
-                        }
-                        setIsSubscribing(false);
-                    }
-                }
-            } else if (responseCode === IAPResponseCode.USER_CANCELED) {
-                setIsSubscribing(false);
-            } else {
-                Alert.alert(
-                    t('subscribe.purchaseErrorTitle'),
-                    `Error code: ${errorCode}`
-                );
-                setIsSubscribing(false);
-            }
+        const { error } = await supabase.rpc('grant_free_access', {
+            plan_id: selectedPlanId,
         });
 
-        return () => {
-            // This is the correct way to clear the listener and fix the TypeScript error.
-            setPurchaseListener(() => {});
-        };
-    }, [fetchProducts, t]);
+        setIsSubscribing(false);
+
+        if (error) {
+            console.error('Error granting free access:', error);
+            Alert.alert("Error", "Could not activate your free plan. Please try again.");
+        } else {
+            // Success! Navigate user into the app.
+            router.replace('/(tabs)');
+        }
+    };
 
     useEffect(() => {
         if (session?.user) {
@@ -225,8 +124,7 @@ export default function SubscriptionScreen() {
                     } else if (data) {
                         setProfile(data);
                         if (data.role === 'Arbeitnehmer') setSelectedPlanId('employee_yearly');
-                        if (data.role === 'Rechnungsschreiber')
-                            setSelectedPlanId('admin_monthly');
+                        if (data.role === 'Rechnungsschreiber') setSelectedPlanId('admin_monthly');
                     }
                     setLoading(false);
                 });
@@ -235,21 +133,9 @@ export default function SubscriptionScreen() {
         }
     }, [session, t]);
 
-    const getProductForPlan = (planId: string) => {
-        const appleProductId =
-            APPLE_PRODUCT_IDS[planId as keyof typeof APPLE_PRODUCT_IDS];
-        return products.find((p) => p.productId === appleProductId);
-    };
-
     const renderPlans = () => {
         if (loading) {
-            return (
-                <ActivityIndicator
-                    size="large"
-                    color={themeColors.primary}
-                    style={{ marginTop: 40 }}
-                />
-            );
+            return <ActivityIndicator size="large" color={themeColors.primary} style={{ marginTop: 40 }} />;
         }
         if (!profile) {
             return <Text style={styles.subtitle}>{t('subscribe.profileError')}</Text>;
@@ -257,37 +143,13 @@ export default function SubscriptionScreen() {
 
         switch (profile.role) {
             case 'Arbeitnehmer':
-                return (
-                    <PlanCard
-                        plan={subscriptionPlans.employee}
-                        onSelect={setSelectedPlanId}
-                        isSelected
-                        t={t}
-                        product={getProductForPlan('employee_yearly')}
-                    />
-                );
+                return <PlanCard plan={subscriptionPlans.employee} onSelect={setSelectedPlanId} isSelected t={t} />;
             case 'Rechnungsschreiber':
-                return (
-                    <PlanCard
-                        plan={subscriptionPlans.admin}
-                        onSelect={setSelectedPlanId}
-                        isSelected
-                        t={t}
-                        product={getProductForPlan('admin_monthly')}
-                    />
-                );
+                return <PlanCard plan={subscriptionPlans.admin} onSelect={setSelectedPlanId} isSelected t={t} />;
             case 'Betrieb':
                 const farmPlans = isYearly
-                    ? [
-                        subscriptionPlans.farm_s_yearly,
-                        subscriptionPlans.farm_m_yearly,
-                        subscriptionPlans.farm_l_yearly,
-                    ]
-                    : [
-                        subscriptionPlans.farm_s,
-                        subscriptionPlans.farm_m,
-                        subscriptionPlans.farm_l,
-                    ];
+                    ? [subscriptionPlans.farm_s_yearly, subscriptionPlans.farm_m_yearly, subscriptionPlans.farm_l_yearly]
+                    : [subscriptionPlans.farm_s, subscriptionPlans.farm_m, subscriptionPlans.farm_l];
                 return (
                     <>
                         <View style={styles.toggleContainer}>
@@ -298,10 +160,7 @@ export default function SubscriptionScreen() {
                                     setIsYearly(value);
                                     setSelectedPlanId(null);
                                 }}
-                                trackColor={{
-                                    false: themeColors.surfaceHighlight,
-                                    true: themeColors.primary,
-                                }}
+                                trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary }}
                                 thumbColor={themeColors.background}
                             />
                             <Text style={styles.toggleLabel}>{t('subscribe.yearly')}</Text>
@@ -316,7 +175,6 @@ export default function SubscriptionScreen() {
                                 onSelect={setSelectedPlanId}
                                 isSelected={selectedPlanId === plan.id}
                                 t={t}
-                                product={getProductForPlan(plan.id)}
                             />
                         ))}
                     </>
@@ -329,11 +187,7 @@ export default function SubscriptionScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <MaterialCommunityIcons
-                    name="shield-lock-outline"
-                    size={60}
-                    color={themeColors.primary}
-                />
+                <MaterialCommunityIcons name="shield-lock-outline" size={60} color={themeColors.primary} />
                 <Text style={styles.title}>{t('subscribe.title')}</Text>
                 <Text style={styles.subtitle}>
                     {t('subscribe.subtitle')}
@@ -345,10 +199,7 @@ export default function SubscriptionScreen() {
             </ScrollView>
             <View style={styles.footer}>
                 <TouchableOpacity
-                    style={[
-                        styles.purchaseButton,
-                        (!selectedPlanId || isSubscribing) && styles.disabledButton,
-                    ]}
+                    style={[styles.purchaseButton, (!selectedPlanId || isSubscribing) && styles.disabledButton]}
                     onPress={handlePurchase}
                     disabled={loading || isSubscribing || !selectedPlanId}
                 >
