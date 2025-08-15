@@ -4,7 +4,7 @@
     "slug": "agricrew",
     "scheme": "agricrew",
     "jsEngine": "hermes",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "splash": {
@@ -16,6 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.agri-crew.agri-crew",
       "buildNumber": "20",
+      "usesIAP": true,
       "entitlements": {
         "aps-environment": "production"
       },
