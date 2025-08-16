@@ -1,3 +1,4 @@
+// In: flixbusvondaladenii/agricrew/Agricrew-47d21f192d2e4856c09f82d3f56f9188da02c7e6/app/(tabs)/_layout.tsx
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -5,6 +6,7 @@ import { getThemeColors } from '@/theme/colors';
 import { useTranslation } from 'react-i18next';
 import { View, StyleSheet } from 'react-native';
 import { useUnreadChats } from '@/contexts/UnreadChatContext';
+import { UnreadChatProvider } from '@/contexts/UnreadChatContext'; // Import the provider
 
 const themeColors = getThemeColors('dark');
 
@@ -25,51 +27,64 @@ export default function TabLayout() {
     const { t } = useTranslation();
 
     return (
-        <Tabs
-            screenOptions={{
-                tabBarActiveTintColor: themeColors.primary,
-                tabBarStyle: {
-                    backgroundColor: themeColors.surface,
-                    borderTopColor: themeColors.border,
-                },
-                headerShown: false,
-            }}
-        >
-            <Tabs.Screen
-                name="index"
-                options={{
-                    title: t('tabs.jobs'),
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="briefcase-outline" color={color} size={size} />
-                    ),
+        <UnreadChatProvider>
+            <Tabs
+                screenOptions={{
+                    tabBarActiveTintColor: themeColors.primary,
+                    tabBarStyle: {
+                        backgroundColor: themeColors.surface,
+                        borderTopColor: themeColors.border,
+                    },
+                    headerShown: false,
                 }}
-            />
-            <Tabs.Screen
-                name="chats"
-                options={{
-                    title: t('tabs.chats'),
-                    tabBarIcon: (props) => <ChatsTabIcon {...props} />,
-                }}
-            />
-            <Tabs.Screen
-                name="add-job"
-                options={{
-                    title: t('tabs.addJob'),
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="plus-box-outline" color={color} size={size} />
-                    ),
-                }}
-            />
-            <Tabs.Screen
-                name="settings"
-                options={{
-                    title: t('tabs.profile'),
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="account-outline" color={color} size={size} />
-                    ),
-                }}
-            />
-        </Tabs>
+            >
+                <Tabs.Screen
+                    name="index"
+                    options={{
+                        title: t('tabs.jobs'),
+                        tabBarIcon: ({ color, size }) => (
+                            <MaterialCommunityIcons name="briefcase-outline" color={color} size={size} />
+                        ),
+                    }}
+                />
+                <Tabs.Screen
+                    name="chats"
+                    options={{
+                        title: t('tabs.chats'),
+                        tabBarIcon: (props) => <ChatsTabIcon {...props} />,
+                    }}
+                />
+                <Tabs.Screen
+                    name="add-job"
+                    options={{
+                        title: t('tabs.addJob'),
+                        tabBarIcon: ({ color, size }) => (
+                            <MaterialCommunityIcons name="plus-box-outline" color={color} size={size} />
+                        ),
+                    }}
+                />
+                {/* ===== ADD THIS NEW SCREEN ===== */}
+                <Tabs.Screen
+                    name="manage-subscription"
+                    options={{
+                        title: t('tabs.subscription'),
+                        tabBarIcon: ({ color, focused }) => (
+                            <MaterialCommunityIcons name={focused ? 'credit-card' : 'credit-card-outline'} color={color} size={28} />
+                        ),
+                    }}
+                />
+                {/* ============================== */}
+                <Tabs.Screen
+                    name="settings"
+                    options={{
+                        title: t('tabs.profile'),
+                        tabBarIcon: ({ color, size }) => (
+                            <MaterialCommunityIcons name="account-outline" color={color} size={size} />
+                        ),
+                    }}
+                />
+            </Tabs>
+        </UnreadChatProvider>
     );
 }
 

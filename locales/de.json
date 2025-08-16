@@ -21,7 +21,8 @@
     "addJob": "Job Hinzufügen",
     "chats": "Chats",
     "jobs": "Jobs",
-    "profile": "Profil"
+    "profile": "Profil",
+    "subscription": "Abo"
   },
   "//": "================== SCREENS ==================",
   "login": {

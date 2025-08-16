@@ -1,6 +1,6 @@
-// app/(auth)/subscribe.tsx - FREE ACCESS VERSION
+// app/(auth)/subscribe.tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     StyleSheet,
     View,
@@ -13,16 +13,13 @@ import {
     ActivityIndicator,
     Switch,
 } from 'react-native';
-import { getThemeColors, Theme } from '@/theme/colors';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/lib/SessionProvider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import type { ComponentProps } from 'react';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-// NOTE: All 'expo-in-app-purchases' imports are removed in this version.
+import { getThemeColors, Theme } from '@/theme/colors';
 
-// ===== Theme setup =====
 const currentTheme: Theme = 'dark';
 const themeColors = getThemeColors(currentTheme);
 const baseFontFamily = Platform.select({
@@ -31,11 +28,9 @@ const baseFontFamily = Platform.select({
     default: 'System',
 });
 
-// ===== Types =====
 type Profile = { role: string } | null;
-type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
+type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-// ===== Subscription Plans (used for display only) =====
 const subscriptionPlans = {
     employee: { id: 'employee_yearly', icon: 'account-hard-hat' as IconName },
     admin: { id: 'admin_monthly', icon: 'file-document-outline' as IconName },
@@ -47,10 +42,8 @@ const subscriptionPlans = {
     farm_l_yearly: { id: 'farm_l_yearly', icon: 'tractor-variant' as IconName },
 } as const;
 
-// ===== PlanCard Component =====
 const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, t }) => {
     const details = t(`subscribe.plans.${plan.id}`, { returnObjects: true });
-    // Prices are now only taken from your JSON files for display
     const displayPrice = details.price;
 
     return (
@@ -80,7 +73,6 @@ const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, t }) => {
     );
 };
 
-// ===== Main Screen =====
 export default function SubscriptionScreen() {
     const { t } = useTranslation();
     const { session } = useSession();
@@ -90,66 +82,121 @@ export default function SubscriptionScreen() {
     const [isSubscribing, setIsSubscribing] = useState(false);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [isYearly, setIsYearly] = useState(false);
-
-    // This function now calls your new Supabase RPC to grant free access
-    const handlePurchase = async () => {
-        if (!selectedPlanId) return;
-        setIsSubscribing(true);
-
-        const { error } = await supabase.rpc('grant_free_access', {
-            plan_id: selectedPlanId,
-        });
-
-        setIsSubscribing(false);
-
-        if (error) {
-            console.error('Error granting free access:', error);
-            Alert.alert("Error", "Could not activate your free plan. Please try again.");
-        } else {
-            // Success! Navigate user into the app.
-            router.replace('/(tabs)');
-        }
-    };
+    const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
 
     useEffect(() => {
-        if (session?.user) {
-            supabase
+        const loadData = async () => {
+            if (!session?.user) {
+                setLoading(false);
+                return;
+            }
+
+            // Load current active subscription
+            const { data: subData, error: subError } = await supabase
+                .from('user_subscriptions')
+                .select('role, is_active, expires_at')
+                .eq('user_id', session.user.id)
+                .eq('is_active', true)
+                .maybeSingle();
+
+            if (subError) {
+                console.error('Error loading subscription:', subError);
+            }
+
+            // If an active subscription is found, redirect and stop execution
+            if (subData) {
+                router.replace('/');
+                return;
+            }
+
+            // This part only runs if the user has NO active subscription.
+            const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('role')
                 .eq('id', session.user.id)
-                .single()
-                .then(({ data, error }) => {
-                    if (error) {
-                        Alert.alert(t('subscribe.errorTitle'), t('subscribe.profileError'));
-                    } else if (data) {
-                        setProfile(data);
-                        if (data.role === 'Arbeitnehmer') setSelectedPlanId('employee_yearly');
-                        if (data.role === 'Rechnungsschreiber') setSelectedPlanId('admin_monthly');
-                    }
-                    setLoading(false);
-                });
-        } else {
+                .single();
+
+            if (profileError) {
+                Alert.alert(t('subscribe.errorTitle'), t('subscribe.profileError'));
+            } else if (profileData) {
+                setProfile(profileData);
+            }
+
             setLoading(false);
+        };
+
+        loadData();
+    }, [session, t, router]);
+
+    const handlePurchase = async () => {
+        if (!selectedPlanId || !session?.user) return;
+        setIsSubscribing(true);
+
+        try {
+            const now = new Date();
+            const isYearlyPlan = selectedPlanId.includes('yearly');
+            // Corrected expiration logic for monthly plans
+            const expiresAt = new Date(now);
+            if (isYearlyPlan) {
+                expiresAt.setFullYear(now.getFullYear() + 1);
+            } else {
+                expiresAt.setMonth(now.getMonth() + 1);
+            }
+
+            const { error } = await supabase
+                .from('user_subscriptions')
+                .upsert({
+                    user_id: session.user.id,
+                    role: selectedPlanId,
+                    is_active: true,
+                    subscribed_at: now.toISOString(),
+                    expires_at: expiresAt.toISOString(),
+                });
+
+            if (error) throw error;
+
+            setCurrentSubscription(selectedPlanId);
+            Alert.alert(t('subscribe.successTitle'), t('subscribe.purchaseSuccess'));
+            router.replace('/');
+        } catch (err) {
+            console.error('Error updating subscription:', err);
+            Alert.alert(t('subscribe.errorTitle'), t('subscribe.purchaseError'));
+        } finally {
+            setIsSubscribing(false);
         }
-    }, [session, t]);
+    };
 
     const renderPlans = () => {
         if (loading) {
             return <ActivityIndicator size="large" color={themeColors.primary} style={{ marginTop: 40 }} />;
         }
-        if (!profile) {
-            return <Text style={styles.subtitle}>{t('subscribe.profileError')}</Text>;
-        }
+
+        if (!profile) return <Text style={styles.subtitle}>{t('subscribe.profileError')}</Text>;
+
+        const farmPlans = isYearly
+            ? [subscriptionPlans.farm_s_yearly, subscriptionPlans.farm_m_yearly, subscriptionPlans.farm_l_yearly]
+            : [subscriptionPlans.farm_s, subscriptionPlans.farm_m, subscriptionPlans.farm_l];
 
         switch (profile.role) {
             case 'Arbeitnehmer':
-                return <PlanCard plan={subscriptionPlans.employee} onSelect={setSelectedPlanId} isSelected t={t} />;
+                return (
+                    <PlanCard
+                        plan={subscriptionPlans.employee}
+                        onSelect={setSelectedPlanId}
+                        isSelected={selectedPlanId === subscriptionPlans.employee.id}
+                        t={t}
+                    />
+                );
             case 'Rechnungsschreiber':
-                return <PlanCard plan={subscriptionPlans.admin} onSelect={setSelectedPlanId} isSelected t={t} />;
+                return (
+                    <PlanCard
+                        plan={subscriptionPlans.admin}
+                        onSelect={setSelectedPlanId}
+                        isSelected={selectedPlanId === subscriptionPlans.admin.id}
+                        t={t}
+                    />
+                );
             case 'Betrieb':
-                const farmPlans = isYearly
-                    ? [subscriptionPlans.farm_s_yearly, subscriptionPlans.farm_m_yearly, subscriptionPlans.farm_l_yearly]
-                    : [subscriptionPlans.farm_s, subscriptionPlans.farm_m, subscriptionPlans.farm_l];
                 return (
                     <>
                         <View style={styles.toggleContainer}>
@@ -195,6 +242,13 @@ export default function SubscriptionScreen() {
                         {profile?.role ? ` ${t(`roles.${profile.role}`)}` : ''}
                     </Text>.
                 </Text>
+                {currentSubscription && (
+                    <View style={styles.currentPlan}>
+                        <Text style={styles.currentPlanText}>
+                            {t('subscribe.currentPlan')}: {currentSubscription}
+                        </Text>
+                    </View>
+                )}
                 {renderPlans()}
             </ScrollView>
             <View style={styles.footer}>
@@ -209,140 +263,33 @@ export default function SubscriptionScreen() {
                         <Text style={styles.buttonText}>{t('subscribe.buttonText')}</Text>
                     )}
                 </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.logoutButton}
-                    onPress={() => supabase.auth.signOut()}
-                >
-                    <Text style={styles.logoutText}>{t('subscribe.logout')}</Text>
-                </TouchableOpacity>
             </View>
         </SafeAreaView>
     );
 }
 
-// ===== Styles =====
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
-    scrollContent: {
-        alignItems: 'center',
-        padding: 24,
-        paddingBottom: 150,
-    },
-    title: {
-        fontFamily: baseFontFamily,
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: themeColors.text,
-        marginVertical: 16,
-        textAlign: 'center',
-    },
-    subtitle: {
-        fontFamily: baseFontFamily,
-        fontSize: 16,
-        color: themeColors.textSecondary,
-        textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: 32,
-    },
-    planCard: {
-        width: '100%',
-        backgroundColor: themeColors.surface,
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        borderWidth: 2,
-        borderColor: themeColors.border,
-        alignItems: 'center',
-        overflow: 'hidden',
-    },
-    selectedPlan: {
-        borderColor: themeColors.primary,
-        backgroundColor: themeColors.primary + '1A',
-    },
-    planTitle: {
-        fontFamily: baseFontFamily,
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: themeColors.text,
-        marginTop: 12,
-    },
-    priceContainer: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-        marginVertical: 8,
-    },
-    price: {
-        fontFamily: baseFontFamily,
-        fontSize: 36,
-        fontWeight: 'bold',
-        color: themeColors.text,
-    },
-    period: {
-        fontFamily: baseFontFamily,
-        fontSize: 16,
-        color: themeColors.textSecondary,
-        marginLeft: 6,
-    },
-    featuresContainer: {
-        alignSelf: 'stretch',
-        marginTop: 12,
-        paddingLeft: 10,
-    },
-    featureItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    featureText: {
-        fontFamily: baseFontFamily,
-        fontSize: 15,
-        color: themeColors.text,
-        marginLeft: 10,
-    },
-    footer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 24,
-        paddingTop: 12,
-        backgroundColor: themeColors.background,
-        borderTopWidth: 1,
-        borderTopColor: themeColors.border,
-    },
-    purchaseButton: {
-        width: '100%',
-        backgroundColor: themeColors.primary,
-        padding: 18,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    disabledButton: { backgroundColor: themeColors.surfaceHighlight },
-    buttonText: {
-        fontFamily: baseFontFamily,
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    logoutButton: { marginTop: 16, alignItems: 'center' },
-    logoutText: { color: themeColors.textSecondary, fontSize: 14 },
-    toggleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 24,
-        backgroundColor: themeColors.surface,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-    },
-    toggleLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: themeColors.text,
-        marginHorizontal: 8,
-    },
-    saveBadge: {
-        backgroundColor: themeColors.success,
-        borderRadius: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        marginLeft: 12,
-    },
+    scrollContent: { alignItems: 'center', padding: 24, paddingBottom: 150 },
+    title: { fontFamily: baseFontFamily, fontSize: 28, fontWeight: 'bold', color: themeColors.text, marginVertical: 16, textAlign: 'center' },
+    subtitle: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 32 },
+    planCard: { width: '100%', backgroundColor: themeColors.surface, borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 2, borderColor: themeColors.border, alignItems: 'center', overflow: 'hidden' },
+    selectedPlan: { borderColor: themeColors.primary, backgroundColor: themeColors.primary + '1A' },
+    planTitle: { fontFamily: baseFontFamily, fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginTop: 12 },
+    priceContainer: { flexDirection: 'row', alignItems: 'baseline', marginVertical: 8 },
+    price: { fontFamily: baseFontFamily, fontSize: 36, fontWeight: 'bold', color: themeColors.text },
+    period: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, marginLeft: 4 },
+    featuresContainer: { width: '100%', marginTop: 12 },
+    featureItem: { flexDirection: 'row', alignItems: 'center', marginVertical: 2 },
+    featureText: { marginLeft: 8, color: themeColors.textSecondary, fontFamily: baseFontFamily },
+    footer: { padding: 16, borderTopWidth: 1, borderColor: themeColors.border, backgroundColor: themeColors.background },
+    purchaseButton: { backgroundColor: themeColors.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+    disabledButton: { opacity: 0.5 },
+    buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', fontFamily: baseFontFamily },
+    toggleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    toggleLabel: { fontFamily: baseFontFamily, fontSize: 14, marginHorizontal: 8, color: themeColors.textSecondary },
+    saveBadge: { backgroundColor: themeColors.success, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 8 },
     saveBadgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+    currentPlan: { backgroundColor: themeColors.surface, padding: 12, borderRadius: 12, marginVertical: 16 },
+    currentPlanText: { color: themeColors.text, fontWeight: 'bold', fontFamily: baseFontFamily },
 });
