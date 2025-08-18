@@ -1,5 +1,3 @@
-// In: app/(tabs)/manage-subscription.tsx
-
 import React, { useState, useCallback } from 'react';
 import {
     StyleSheet,
@@ -12,6 +10,9 @@ import {
     Alert,
     ActivityIndicator,
     Switch,
+    UIManager,
+    LayoutAnimation,
+    Linking // Added Linking
 } from 'react-native';
 import { getThemeColors, Theme } from '@/theme/colors';
 import { supabase } from '@/lib/supabase';
@@ -20,6 +21,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from 'expo-router';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 
 // ===== Theme setup =====
 const currentTheme: Theme = 'dark';
@@ -53,7 +60,7 @@ const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, isActive, t }) =>
             style={[styles.planCard, isSelected && styles.selectedPlan, isActive && styles.activePlan]}
             onPress={() => onSelect(plan.id)}
         >
-            {isActive && <View style={styles.activeBadge}><Text style={styles.activeBadgeText}>Aktiv</Text></View>}
+            {isActive && <View style={styles.activeBadge}><Text style={styles.activeBadgeText}>{t('manageSubscription.active')}</Text></View>}
             <MaterialCommunityIcons name={plan.icon} size={32} color={isSelected || isActive ? themeColors.primary : themeColors.textSecondary} />
             <Text style={styles.planTitle}>{details.title}</Text>
             <View style={styles.priceContainer}>
@@ -83,6 +90,8 @@ export default function ManageSubscriptionScreen() {
     const [isUpdating, setIsUpdating] = useState(false);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [isYearly, setIsYearly] = useState(false);
+    const [isLegalNoticeVisible, setLegalNoticeVisible] = useState(false);
+
 
     useFocusEffect(
         useCallback(() => {
@@ -104,14 +113,14 @@ export default function ManageSubscriptionScreen() {
                         setSelectedPlanId(subData?.role || null);
 
                     } catch (e) {
-                        Alert.alert("Fehler", "Daten konnten nicht geladen werden.");
+                        Alert.alert(t('manageSubscription.errorTitle'), t('manageSubscription.loadDataError'));
                     } finally {
                         setLoading(false);
                     }
                 }
             };
             fetchInitialData();
-        }, [session])
+        }, [session, t])
     );
 
     const handleUpdatePlan = async () => {
@@ -140,10 +149,10 @@ export default function ManageSubscriptionScreen() {
             }
 
             setSubscription({ role: selectedPlanId });
-            Alert.alert("Erfolg", "Dein Plan wurde aktualisiert.");
+            Alert.alert(t('manageSubscription.successTitle'), t('manageSubscription.updateSuccess'));
         } catch (error) {
             console.error(error);
-            Alert.alert("Fehler", "Dein Plan konnte nicht aktualisiert werden.");
+            Alert.alert(t('manageSubscription.errorTitle'), t('manageSubscription.updateError'));
         } finally {
             setIsUpdating(false);
         }
@@ -202,8 +211,8 @@ export default function ManageSubscriptionScreen() {
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <MaterialCommunityIcons name="credit-card-settings-outline" size={60} color={themeColors.primary} />
-                <Text style={styles.title}>Abonnement verwalten</Text>
-                <Text style={styles.subtitle}>Hier sehen Sie Ihren aktuellen Plan und können ihn wechseln.</Text>
+                <Text style={styles.title}>{t('manageSubscription.title')}</Text>
+                <Text style={styles.subtitle}>{t('manageSubscription.subtitle')}</Text>
                 {renderPlans()}
             </ScrollView>
             <View style={styles.footer}>
@@ -218,9 +227,43 @@ export default function ManageSubscriptionScreen() {
                     {isUpdating ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.buttonText}>Plan wechseln</Text>
+                        <Text style={styles.buttonText}>{t('manageSubscription.changePlan')}</Text>
                     )}
                 </TouchableOpacity>
+                <View style={styles.legalContainer}>
+                    <TouchableOpacity
+                        style={styles.collapsibleHeader}
+                        onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setLegalNoticeVisible(!isLegalNoticeVisible);
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.collapsibleHeaderText}>
+                            {t('manageSubscription.legalHeader')}
+                        </Text>
+                        <MaterialCommunityIcons
+                            name={isLegalNoticeVisible ? 'chevron-up' : 'chevron-down'}
+                            size={24}
+                            color={themeColors.textSecondary}
+                        />
+                    </TouchableOpacity>
+                    {isLegalNoticeVisible && (
+                        <View style={styles.legalContent}>
+                            <Text style={styles.legalText}>
+                                {t('manageSubscription.legalNotice')}
+                            </Text>
+                            <View style={styles.legalLinksContainer}>
+                                <TouchableOpacity onPress={() => Linking.openURL('https://agri-crew.de/agb')}>
+                                    <Text style={styles.legalLink}>{t('manageSubscription.terms', 'Terms & Conditions')}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => Linking.openURL('https://agri-crew.de/app-datenschutz')}>
+                                    <Text style={styles.legalLink}>{t('manageSubscription.privacy', 'Privacy Policy')}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+                </View>
             </View>
         </SafeAreaView>
     );
@@ -229,7 +272,7 @@ export default function ManageSubscriptionScreen() {
 // ===== Styles =====
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
-    scrollContent: { alignItems: 'center', padding: 24, paddingBottom: 150 },
+    scrollContent: { alignItems: 'center', padding: 24, paddingBottom: 220 }, // Increased paddingBottom
     title: { fontFamily: baseFontFamily, fontSize: 28, fontWeight: 'bold', color: themeColors.text, marginVertical: 16, textAlign: 'center' },
     subtitle: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 32 },
     planCard: { width: '100%', backgroundColor: themeColors.surface, borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 2, borderColor: themeColors.border, alignItems: 'center', overflow: 'hidden' },
@@ -250,4 +293,39 @@ const styles = StyleSheet.create({
     toggleLabel: { fontSize: 16, fontWeight: '600', color: themeColors.text, marginHorizontal: 8 },
     activeBadge: { position: 'absolute', top: 15, right: 15, backgroundColor: themeColors.primary, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
     activeBadgeText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+    legalContainer: {
+        marginTop: 16,
+    },
+    collapsibleHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    collapsibleHeaderText: {
+        fontFamily: baseFontFamily,
+        fontSize: 14,
+        color: themeColors.textSecondary,
+        fontWeight: '500',
+    },
+    legalContent: {
+        marginTop: 12,
+    },
+    legalText: {
+        fontFamily: baseFontFamily,
+        fontSize: 12,
+        color: themeColors.textSecondary,
+        textAlign: 'left',
+        lineHeight: 18,
+    },
+    legalLinksContainer: {
+        flexDirection: 'row',
+        marginTop: 12,
+        gap: 20,
+    },
+    legalLink: {
+        fontFamily: baseFontFamily,
+        fontSize: 12,
+        color: themeColors.primary,
+        textDecorationLine: 'underline',
+    },
 });

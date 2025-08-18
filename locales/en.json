@@ -1,11 +1,10 @@
 {
-  "//": "================== GLOBAL ==================",
   "common": {
+    "error": "Error",
     "addPhoto": "Add Photo",
     "cancel": "Cancel",
     "delete": "Delete",
     "done": "Done",
-    "error": "Error",
     "language": "Language",
     "no": "No",
     "separateWithCommas": "Separate with commas",
@@ -24,11 +23,17 @@
     "profile": "Profile",
     "subscription": "Subscription"
   },
-  "//": "================== SCREENS ==================",
   "login": {
+    "errorEmailPassword": "Please enter both your email and password.",
+    "alertLoginFailed": "Login Failed",
     "alertEmailNotConfirmed": "Please check your email to confirm your account.",
     "alertInvalidCredentials": "Invalid email or password. Please try again.",
-    "alertLoginFailed": "Login Failed",
+    "errorUnexpected": "An unexpected error occurred during login.",
+    "errorTitle": "Error",
+    "emailPlaceholder": "name@example.com",
+    "passwordPlaceholder": "••••••••",
+    "english": "English",
+    "german": "Deutsch",
     "forgotPassword": "Forgot Password?",
     "logInButton": "Log In",
     "noAccount": "Don't have an account?",
@@ -39,6 +44,10 @@
     "welcomeBack": "Welcome Back!"
   },
   "register": {
+    "emailPlaceholder": "name@example.com",
+    "passwordPlaceholder": "••••••••",
+    "usernamePlaceholder": "e.g., greenfarmer88",
+    "fullNamePlaceholder": "e.g., Sample Farms Inc.",
     "alreadyHaveAccount": "Already have an account?",
     "emailLabel": "Email Address",
     "errorAllFields": "Please fill out all required fields and select your role.",
@@ -59,6 +68,9 @@
     "usernameLabel": "Username"
   },
   "jobList": {
+    "SOS": "SOS",
+    "missingOwner": "This job posting is missing an owner.",
+    "chatError": "Could not start a chat. {{message}}",
     "accommodationOffered": "Accommodation Offered",
     "all": "All",
     "applyFilters": "Apply Filters",
@@ -102,6 +114,8 @@
     "urgent": "Urgent"
   },
   "addJob": {
+    "purchaseSimulationTitle": "Purchase Simulation",
+    "purchaseSimulationMessage": "This would open the RevenueCat purchase flow for a single SOS tag.",
     "quotaExceededTitle": "Job Quota Exceeded",
     "quotaExceededMessage": "You have used all available job posts for this period. Please upgrade your plan or wait for it to renew.",
     "sosQuotaExceededTitle": "SOS Quota Exceeded",
@@ -150,9 +164,92 @@
     "sectionStatus": "Status",
     "selectCountry": "Select Country...",
     "selectRegion": "Select Region...",
-    "useFarmAddress": "Use Farm Address"
+    "useFarmAddress": "Use Farm Address",
+    "alertNoFarmAddressTitle": "Farm Address Not Set",
+    "alertNoFarmAddressMessage": "Please set your main farm address in your profile first to use this feature."
+  },
+  "manageSubscription": {
+    "errorTitle": "Error",
+    "loadDataError": "Data could not be loaded.",
+    "successTitle": "Success",
+    "updateSuccess": "Your plan has been updated.",
+    "updateError": "Your plan could not be updated.",
+    "title": "Manage Subscription",
+    "subtitle": "Here you can see your current plan and change it.",
+    "changePlan": "Change Plan",
+    "active": "Active",
+    "legalHeader": "Subscription & Cancellation Policy",
+    "legalNotice": "Your subscription renews automatically for the period you have selected (monthly or yearly). You can cancel your subscription at any time with one month's notice. Please note that unused credits (e.g., SOS messages, job posts, etc.) or unused periods will not be refunded."
+  },
+  "subscribe": {
+    "errorTitle": "Error",
+    "profileError": "Could not load your profile.",
+    "successTitle": "Success",
+    "purchaseSuccess": "Your purchase was successful.",
+    "title": "Choose Your Subscription",
+    "subtitle": "Select a plan for your role as a",
+    "buttonText": "Subscribe Now",
+    "logout": "Logout",
+    "purchaseErrorTitle": "Purchase Failed",
+    "purchaseErrorMessage": "We could not complete your purchase. Please try again.",
+    "updateError": "Could not update your subscription status.",
+    "billingCycle": "Billing Cycle",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "save10": "Save 10%",
+    "plans": {
+      "employee_yearly": {
+        "title": "Employee Plan (Annual)",
+        "price": "€2.99",
+        "period": "per year",
+        "features": ["Access all job listings", "Direct chat with farms", "SOS Job notifications"]
+      },
+      "admin_monthly": {
+        "title": "Admin Plan (Monthly)",
+        "price": "€5.99",
+        "period": "per month",
+        "features": ["Access all job listings", "Direct chat with farms", "SOS Job notifications"]
+      },
+      "farm_s": {
+        "title": "Farm Package S (Monthly)",
+        "price": "€7.99",
+        "period": "per month",
+        "features": ["10 job posts included", "0 SOS alerts included"]
+      },
+      "farm_m": {
+        "title": "Farm Package M (Monthly)",
+        "price": "€19.99",
+        "period": "per month",
+        "features": ["20 job posts included", "5 SOS alerts included"]
+      },
+      "farm_l": {
+        "title": "Farm Package L (Monthly)",
+        "price": "€34.99",
+        "period": "per month",
+        "features": ["20 job posts included", "10 SOS alerts included", "Top placement in listings"]
+      },
+      "farm_s_yearly": {
+        "title": "Farm Package S (Annual)",
+        "price": "€86.90",
+        "period": "per year",
+        "features": ["120 job posts included", "0 SOS alerts included"]
+      },
+      "farm_m_yearly": {
+        "title": "Farm Package M (Annual)",
+        "price": "€214.99",
+        "period": "per year",
+        "features": ["240 job posts included", "60 SOS alerts included"]
+      },
+      "farm_l_yearly": {
+        "title": "Farm Package L (Annual)",
+        "price": "€379.99",
+        "period": "per year",
+        "features": ["240 job posts included", "120 SOS alerts included", "Top placement in listings"]
+      }
+    }
   },
   "myJobs": {
+    "deleteErrorWithMessage": "Could not delete the job: {{message}}",
     "addJobButton": "Add New Job",
     "addJobPrompt": "Create your first job offer now!",
     "at": "at",
@@ -184,6 +281,19 @@
     "errorMessage": "Could not send reset link. Please try again."
   },
   "profile": {
+    "loadProfileError": "Failed to load profile: {{message}}",
+    "farmSizePlaceholder": "e.g., 150",
+    "employeeCountPlaceholder": "e.g., 6-20",
+    "publicEmailPlaceholder": "info@myfarm.com",
+    "websitePlaceholder": "www.myfarm.com",
+    "instagramPlaceholder": "e.g., instagram.com/myfarm",
+    "youtubePlaceholder": "e.g., youtube.com/myfarm",
+    "facebookPlaceholder": "e.g., facebook.com/myfarm",
+    "tiktokPlaceholder": "e.g., tiktok.com/@myfarm",
+    "usernameLabel": "Username:",
+    "usernamePlaceholder": "Enter your username",
+    "agePlaceholder": "Your age",
+    "availabilityPlaceholder": "e.g., Immediately, from August 2025",
     "deleteAccount": "Delete Account",
     "deleteConfirmTitle": "Are you sure?",
     "deleteConfirmMessage": "This action is irreversible. All your data, including your profile, job listings, and chats, will be permanently deleted.",
@@ -204,7 +314,7 @@
     "locationErrorMessage": "Could not get your location.",
     "aboutFarm": "About the Farm (Description)",
     "aboutFarmPlaceholder": "Describe your farm, its history, and mission.",
-    "accommodation": "Accommodation Offered",
+    "accommodationOffered": "Accommodation Offered",
     "age": "Age",
     "availability": "Availability",
     "city": "City",
@@ -276,7 +386,6 @@
     "sendMessageError": "Could not send message. Please try again.",
     "titleFallback": "Chat"
   },
-  "//": "================== DATA & OPTIONS ==================",
   "filters": {
     "countries": {
       "austria": "Austria",
@@ -321,78 +430,5 @@
     "viticulture": "Viticulture",
     "woodChipper": "Wood Chipper",
     "woodTransport": "Wood Transport"
-  },
-  "experiences_list": {
-    "landwirtschaft": ["Arable Farming", "Plant Breeding", "Harvesting", "Machine Operation", "Soil Cultivation", "Fertilizing", "Plant Protection", "Seed Multiplication", "Field Vegetable Production", "Organic Farming"],
-    "forstwirtschaft": ["Logging", "Reforestation", "Forest Tending", "Forest Machine Operation", "Hunting", "Nature and Landscape Management", "Wood Processing", "Forest Protection", "Forest Road Construction", "Wildlife Management"],
-    "gartenbau": ["Ornamental Plant Cultivation", "Vegetable Production", "Fruit Growing", "Nursery", "Perennial Nursery", "Gardening and Landscaping", "Cemetery Gardening", "Retail Nursery", "Herb Cultivation", "Floristry"],
-    "weinbau": ["Vine Pruning", "Grape Harvesting", "Cellar Management", "Wine Marketing", "Oenology", "Vineyard Maintenance", "Grape Processing", "Bottling", "Wine Tasting", "Quality Management"],
-    "fischerei": ["Inland Fishing", "Coastal Fishing", "Deep Sea Fishing", "Aquaculture", "Fish Farming", "Net Mending", "Fish Processing", "Limnology", "Catch Quota Management", "Navigation"],
-    "tierhaltung": ["Cattle Farming", "Pig Farming", "Poultry Farming", "Sheep and Goat Farming", "Horse Breeding", "Dairy Farming", "Animal Care", "Stable Work", "Feeding Technology", "Animal Breeding"],
-    "sonstiges": ["Renewable Energy", "Direct Marketing", "Farm Tourism", "Agricultural Consulting", "Research and Development", "Quality Assurance", "Logistics", "Craftsmanship", "Teaching and Training", "Event Management"],
-    "buchhaltung": ["Tax Consulting", "Payroll Accounting", "Financial Accounting", "Controlling", "Annual Financial Statements", "Disposition", "Office Administration", "Bookkeeping", "Secretarial"]
-  },
-  "subscribe": {
-    "title": "Subscription Required",
-    "subtitle": "To continue using Agri-Crew, please select the plan for your role as a",
-    "buttonText": "Subscribe Now",
-    "logout": "Logout",
-    "purchaseErrorTitle": "Purchase Failed",
-    "purchaseErrorMessage": "We could not complete your purchase. Please try again.",
-    "updateError": "Could not update your subscription status.",
-    "billingCycle": "Billing Cycle",
-    "monthly": "Monthly",
-    "yearly": "Yearly",
-    "save10": "Save 10%",
-    "plans": {
-      "employee_yearly": {
-        "title": "Employee Plan",
-        "price": "€2,99",
-        "period": "/ year",
-        "features": ["Access all job listings", "Direct chat with farms", "SOS Job notifications"]
-      },
-      "admin_monthly": {
-        "title": "Admin Plan",
-        "price": "€5,99",
-        "period": "/ month",
-        "features": ["Full access for administrative tasks"]
-      },
-      "farm_s": {
-        "title": "Farm Package S",
-        "price": "€7,99",
-        "period": "/ month",
-        "features": ["10 job posts included", "0 SOS alerts included"]
-      },
-      "farm_m": {
-        "title": "Farm Package M",
-        "price": "€19,99",
-        "period": "/ month",
-        "features": ["20 job posts included", "5 SOS alerts included"]
-      },
-      "farm_l": {
-        "title": "Farm Package L",
-        "price": "€34,99",
-        "period": "/ month",
-        "features": ["20 job posts included", "10 SOS alerts included", "Top placement in listings"]
-      },
-      "farm_s_yearly": {
-        "title": "Farm Package S (Yearly)",
-        "price": "€86.29",
-        "period": "/ year",
-        "features": ["120 job posts included", "0 SOS alerts included"]
-      },
-      "farm_m_yearly": {
-        "title": "Farm Package M (Yearly)",
-        "price": "€215.89",
-        "period": "/ year",
-        "features": ["240 job posts included", "60 SOS alerts included"]
-      },
-      "farm_l_yearly": {
-        "title": "Farm Package L (Yearly)",
-        "price": "€377.89",
-        "period": "/ year",
-        "features": ["240 job posts included", "120 SOS alerts included", "Top placement in listings"]
-      }
-    }
   }
 }

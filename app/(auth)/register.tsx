@@ -134,7 +134,7 @@ const RegisterScreen = () => {
 
             // The trigger should have automatically created the profile by this point
             Alert.alert(t('register.successTitle'), t('register.successMessage'));
-            router.replace('/login');
+            router.replace('/(auth)/login');
         } catch (err: any) {
             console.error('Signup error:', err);
             setError(err.message || 'An unexpected error occurred during signup.');
@@ -167,25 +167,25 @@ const RegisterScreen = () => {
                                 {selectedRole === 'Arbeitnehmer' && (
                                     <View style={styles.inputGroup}>
                                         <Text style={styles.inputLabel}>{t('register.usernameLabel')}</Text>
-                                        <TextInput style={styles.input} placeholder="e.g., greenfarmer88" placeholderTextColor={themeColors.textHint} autoCapitalize="none" value={username} onChangeText={setUsername} editable={!loading} />
+                                        <TextInput style={styles.input} placeholder={t('register.usernamePlaceholder')} placeholderTextColor={themeColors.textHint} autoCapitalize="none" value={username} onChangeText={setUsername} editable={!loading} />
                                     </View>
                                 )}
 
                                 {(selectedRole === 'Betrieb' || selectedRole === 'Rechnungsschreiber') && (
                                     <View style={styles.inputGroup}>
                                         <Text style={styles.inputLabel}>{t('register.fullNameLabel')}</Text>
-                                        <TextInput style={styles.input} placeholder="e.g., Sample Farms Inc." placeholderTextColor={themeColors.textHint} autoCapitalize="words" value={fullName} onChangeText={setFullName} editable={!loading} />
+                                        <TextInput style={styles.input} placeholder={t('register.fullNamePlaceholder')} placeholderTextColor={themeColors.textHint} autoCapitalize="words" value={fullName} onChangeText={setFullName} editable={!loading} />
                                     </View>
                                 )}
 
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>{t('register.emailLabel')}</Text>
-                                    <TextInput style={styles.input} placeholder="name@example.com" placeholderTextColor={themeColors.textHint} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} editable={!loading} />
+                                    <TextInput style={styles.input} placeholder={t('register.emailPlaceholder')} placeholderTextColor={themeColors.textHint} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} editable={!loading} />
                                 </View>
 
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>{t('register.passwordLabel')}</Text>
-                                    <TextInput style={styles.input} placeholder="••••••••" placeholderTextColor={themeColors.textHint} secureTextEntry value={password} onChangeText={setPassword} editable={!loading} />
+                                    <TextInput style={styles.input} placeholder={t('register.passwordPlaceholder')} placeholderTextColor={themeColors.textHint} secureTextEntry value={password} onChangeText={setPassword} editable={!loading} />
                                 </View>
 
                                 <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp} disabled={loading}>
@@ -195,7 +195,7 @@ const RegisterScreen = () => {
 
                             <View style={styles.loginContainer}>
                                 <Text style={styles.loginText}>{t('register.alreadyHaveAccount')} </Text>
-                                <TouchableOpacity onPress={() => router.replace('/login')}>
+                                <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
                                     <Text style={styles.loginLink}>{t('register.logInLink')}</Text>
                                 </TouchableOpacity>
                             </View>

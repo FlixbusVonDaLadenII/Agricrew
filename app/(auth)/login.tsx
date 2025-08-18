@@ -41,7 +41,7 @@ const LoginScreen = () => {
         setLoading(true);
 
         if (!email || !password) {
-            setError('Please enter both your email and password.');
+            setError(t('login.errorEmailPassword'));
             setLoading(false);
             return;
         }
@@ -56,23 +56,23 @@ const LoginScreen = () => {
                 setError(signInError.message);
                 console.error('Supabase Login Error:', signInError.message);
                 if (signInError.message.includes('Email not confirmed')) {
-                    Alert.alert('Login Failed', 'Please check your email to confirm your account.');
+                    Alert.alert(t('login.alertLoginFailed'), t('login.alertEmailNotConfirmed'));
                 } else if (signInError.message.includes('Invalid login credentials')) {
-                    Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
+                    Alert.alert(t('login.alertLoginFailed'), t('login.alertInvalidCredentials'));
                 } else {
-                    Alert.alert('Login Failed', signInError.message);
+                    Alert.alert(t('login.alertLoginFailed'), signInError.message);
                 }
             } else if (data.user) {
                 console.log('Login successful for user:', data.user.email);
                 router.replace('/(tabs)');
             } else {
-                setError('An unexpected error occurred during login.');
+                setError(t('login.errorUnexpected'));
                 console.warn('Login returned no user and no explicit error.');
             }
         } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred.');
+            setError(err.message || t('login.errorUnexpected'));
             console.error('General login error:', err);
-            Alert.alert('Error', err.message || 'An unexpected error occurred.');
+            Alert.alert(t('login.errorTitle'), err.message || t('login.errorUnexpected'));
         } finally {
             setLoading(false);
         }
@@ -101,8 +101,8 @@ const LoginScreen = () => {
                             </View>
 
                             <View style={styles.langContainer}>
-                                <TouchableOpacity style={[styles.langButton, i18n.language === 'en' && styles.langButtonSelected]} onPress={() => i18n.changeLanguage('en')}><Text style={[styles.langButtonText, i18n.language === 'en' && styles.langButtonTextSelected]}>English</Text></TouchableOpacity>
-                                <TouchableOpacity style={[styles.langButton, i18n.language === 'de' && styles.langButtonSelected]} onPress={() => i18n.changeLanguage('de')}><Text style={[styles.langButtonText, i18n.language === 'de' && styles.langButtonTextSelected]}>Deutsch</Text></TouchableOpacity>
+                                <TouchableOpacity style={[styles.langButton, i18n.language === 'en' && styles.langButtonSelected]} onPress={() => i18n.changeLanguage('en')}><Text style={[styles.langButtonText, i18n.language === 'en' && styles.langButtonTextSelected]}>{t('login.english')}</Text></TouchableOpacity>
+                                <TouchableOpacity style={[styles.langButton, i18n.language === 'de' && styles.langButtonSelected]} onPress={() => i18n.changeLanguage('de')}><Text style={[styles.langButtonText, i18n.language === 'de' && styles.langButtonTextSelected]}>{t('login.german')}</Text></TouchableOpacity>
                             </View>
 
                             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -112,7 +112,7 @@ const LoginScreen = () => {
                                     <Text style={styles.inputLabel}>{t('login.emailLabel')}</Text>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="name@example.com"
+                                        placeholder={t('login.emailPlaceholder')}
                                         placeholderTextColor={themeColors.textHint}
                                         keyboardType="email-address"
                                         autoCapitalize="none"
@@ -126,7 +126,7 @@ const LoginScreen = () => {
                                     <Text style={styles.inputLabel}>{t('login.passwordLabel')}</Text>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="••••••••"
+                                        placeholder={t('login.passwordPlaceholder')}
                                         placeholderTextColor={themeColors.textHint}
                                         secureTextEntry
                                         value={password}

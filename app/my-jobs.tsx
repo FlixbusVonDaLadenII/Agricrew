@@ -47,7 +47,7 @@ export default function MyJobsScreen() {
         if (!session?.user) {
             setLoading(false);
             Alert.alert(t('myJobs.notLoggedInTitle'), t('myJobs.notLoggedInMessage'));
-            router.replace('/login');
+            router.replace('/(auth)/login');
             return;
         }
 
@@ -95,7 +95,7 @@ export default function MyJobsScreen() {
                         // --- MODIFICATION END ---
 
                         if (deleteError) {
-                            Alert.alert(t('myJobs.deleteErrorTitle'), deleteError.message || t('myJobs.deleteErrorMessage'));
+                            Alert.alert(t('myJobs.deleteErrorTitle'), deleteError.message ? t('myJobs.deleteErrorWithMessage', { message: deleteError.message }) : t('myJobs.deleteErrorMessage'));
                         } else {
                             Alert.alert(t('myJobs.deleteSuccessTitle'), t('myJobs.deleteSuccessMessage'));
                             fetchMyJobs(); // Refresh the list
@@ -120,8 +120,8 @@ export default function MyJobsScreen() {
             <Text style={styles.jobCardLocation}>{item.location} ({item.region}, {item.country})</Text>
             <Text style={styles.jobCardDescription} numberOfLines={2}>{item.description}</Text>
             <View style={styles.jobCardDetailRow}>
-                {item.salary_per_hour !== null && <View style={styles.jobCardIconText}><MaterialCommunityIcons name="currency-eur" size={16} color={themeColors.textSecondary} /><Text style={styles.jobCardDetailText}>{item.salary_per_hour}€/hr</Text></View>}
-                {item.job_type && item.job_type.length > 0 && <View style={styles.jobCardIconText}><MaterialCommunityIcons name="briefcase-outline" size={16} color={themeColors.textSecondary} /><Text style={styles.jobCardDetailText}>{item.job_type.join(', ')}</Text></View>}
+                {item.salary_per_hour !== null && <View style={styles.jobCardIconText}><MaterialCommunityIcons name="currency-eur" size={16} color={themeColors.textSecondary} /><Text style={styles.jobCardDetailText}>{t('jobList.salaryPerHour', { salary: item.salary_per_hour })}</Text></View>}
+                {item.job_type && item.job_type.length > 0 && <View style={styles.jobCardIconText}><MaterialCommunityIcons name="briefcase-outline" size={16} color={themeColors.textSecondary} /><Text style={styles.jobCardDetailText}>{item.job_type.map(type => t(`jobTypes.${type}`)).join(', ')}</Text></View>}
                 {item.is_active ? (
                     <View style={styles.activeStatus}><MaterialCommunityIcons name="check-circle" size={16} color="green" /><Text style={styles.activeStatusText}>{t('myJobs.statusActive')}</Text></View>
                 ) : (
@@ -170,7 +170,7 @@ export default function MyJobsScreen() {
                             <MaterialCommunityIcons name="clipboard-text-off-outline" size={60} color={themeColors.textSecondary} />
                             <Text style={styles.emptyText}>{t('myJobs.noJobsYet')}</Text>
                             <Text style={styles.emptySubText}>{t('myJobs.addJobPrompt')}</Text>
-                            <TouchableOpacity style={styles.addJobButton} onPress={() => router.push('/add-job')}>
+                            <TouchableOpacity style={styles.addJobButton} onPress={() => router.push('/(tabs)/add-job')}>
                                 <MaterialCommunityIcons name="plus-box-outline" size={24} color={themeColors.background} />
                                 <Text style={styles.addJobButtonText}>{t('myJobs.addJobButton')}</Text>
                             </TouchableOpacity>

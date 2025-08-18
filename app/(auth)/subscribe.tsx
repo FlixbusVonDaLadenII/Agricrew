@@ -160,7 +160,7 @@ export default function SubscriptionScreen() {
             router.replace('/');
         } catch (err) {
             console.error('Error updating subscription:', err);
-            Alert.alert(t('subscribe.errorTitle'), t('subscribe.purchaseError'));
+            Alert.alert(t('subscribe.purchaseErrorTitle'), t('subscribe.purchaseErrorMessage'));
         } finally {
             setIsSubscribing(false);
         }

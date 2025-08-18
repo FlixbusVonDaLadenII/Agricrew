@@ -1,5 +1,4 @@
 {
-  "//": "================== GLOBAL ==================",
   "common": {
     "addPhoto": "Foto hinzufügen",
     "cancel": "Abbrechen",
@@ -24,7 +23,6 @@
     "profile": "Profil",
     "subscription": "Abo"
   },
-  "//": "================== SCREENS ==================",
   "login": {
     "alertEmailNotConfirmed": "Bitte überprüfe deine E-Mails, um dein Konto zu bestätigen.",
     "alertInvalidCredentials": "Ungültige E-Mail oder Passwort. Bitte versuche es erneut.",
@@ -150,7 +148,9 @@
     "sectionStatus": "Status",
     "selectCountry": "Land auswählen...",
     "selectRegion": "Region auswählen...",
-    "useFarmAddress": "Betriebsadresse verwenden"
+    "useFarmAddress": "Betriebsadresse verwenden",
+    "alertNoFarmAddressTitle": "Betriebsadresse nicht festgelegt",
+    "alertNoFarmAddressMessage": "Bitte lege zuerst deine Hauptbetriebsadresse in deinem Profil fest, um diese Funktion zu nutzen."
   },
   "forgotPassword": {
     "title": "Passwort vergessen?",
@@ -204,7 +204,7 @@
     "locationErrorMessage": "Ihr Standort konnte nicht abgerufen werden.",
     "aboutFarm": "Über den Betrieb (Beschreibung)",
     "aboutFarmPlaceholder": "Beschreibe deinen Betrieb, seine Geschichte und Mission.",
-    "accommodation": "Unterkunft angeboten",
+    "accommodationOffered": "Unterkunft angeboten",
     "age": "Alter",
     "availability": "Verfügbarkeit",
     "city": "Stadt",
@@ -276,7 +276,6 @@
     "sendMessageError": "Nachricht konnte nicht gesendet werden. Bitte versuche es erneut.",
     "titleFallback": "Chat"
   },
-  "//": "================== DATA & OPTIONS ==================",
   "filters": {
     "countries": {
       "austria": "Österreich",
@@ -322,22 +321,12 @@
     "woodChipper": "Holzhäcksler",
     "woodTransport": "Holz-Transport"
   },
-  "experiences_list": {
-    "landwirtschaft": ["Ackerbau", "Pflanzenzucht", "Erntearbeit", "Maschinenführung", "Bodenbearbeitung", "Düngung", "Pflanzenschutz", "Saatgutvermehrung", "Feldgemüseanbau", "Ökolandbau"],
-    "forstwirtschaft": ["Holzernte", "Aufforstung", "Waldpflege", "Forstmaschineneinsatz", "Jagd", "Natur- und Landschaftspflege", "Holzverarbeitung", "Forstschutz", "Wegebau", "Wildtiermanagement"],
-    "gartenbau": ["Zierpflanzenanbau", "Gemüseanbau", "Obstbau", "Baumschule", "Staudengärtnerei", "Garten- und Landschaftsbau", "Friedhofsgärtnerei", "Verkaufsgärtnerei", "Kräuteranbau", "Floristik"],
-    "weinbau": ["Rebschnitt", "Weinlese", "Kellerwirtschaft", "Weinvermarktung", "Önologie", "Weinbergpflege", "Traubenverarbeitung", "Flaschenabfüllung", "Weinprobe", "Qualitätsmanagement"],
-    "fischerei": ["Binnenfischerei", "Küstenfischerei", "Hochseefischerei", "Aquakultur", "Fischzucht", "Netzreparatur", "Fischverarbeitung", "Gewässerkunde", "Fangquotenmanagement", "Schiffsführung"],
-    "tierhaltung": ["Rinderhaltung", "Schweinehaltung", "Geflügelhaltung", "Schaf- und Ziegenhaltung", "Pferdehaltung", "Milchviehhaltung", "Tierpflege", "Stallarbeit", "Fütterungstechnik", "Tierzucht"],
-    "sonstiges": ["Erneuerbare Energien", "Direktvermarktung", "Tourismus auf dem Bauernhof", "Landwirtschaftliche Beratung", "Forschung und Entwicklung", "Qualitätssicherung", "Logistik", "Handwerk", "Lehre und Ausbildung", "Veranstaltungsmanagement"],
-    "buchhaltung": ["Disposition", "Bürokraft", "Buchhaltung", "Sekretariat", "Steuerberatung", "Lohnbuchhaltung", "Finanzbuchhaltung", "Controlling", "Jahresabschluss"]
-  },
   "subscribe": {
-    "title": "Abonnement Erforderlich",
-    "subtitle": "Um Agri-Crew weiterhin zu nutzen, wählen Sie bitte den Plan für Ihre Rolle als",
-    "buttonText": "Jetzt Abonnieren",
+    "title": "Abonnement wählen",
+    "subtitle": "Wählen Sie einen Plan für Ihre Rolle als",
+    "buttonText": "Jetzt abonnieren",
     "logout": "Abmelden",
-    "purchaseErrorTitle": "Kauf Fehlgeschlagen",
+    "purchaseErrorTitle": "Kauf fehlgeschlagen",
     "purchaseErrorMessage": "Wir konnten Ihren Kauf nicht abschließen. Bitte versuchen Sie es erneut.",
     "updateError": "Ihr Abonnementstatus konnte nicht aktualisiert werden.",
     "billingCycle": "Abrechnungszeitraum",
@@ -346,53 +335,66 @@
     "save10": "10% sparen",
     "plans": {
       "employee_yearly": {
-        "title": "Arbeitnehmer-Plan",
+        "title": "Arbeitnehmer-Plan (Jährlich)",
         "price": "2,99€",
         "period": "/ Jahr",
-        "features": ["Zugang zu allen Jobangeboten", "Direkter Chat mit Betrieben", "SOS-Job-Benachrichtigungen"]
+        "features": ["Zugang zu allen Stellenangeboten", "Direkter Chat mit Betrieben", "SOS-Job-Benachrichtigungen"]
       },
       "admin_monthly": {
-        "title": "Verwaltungs-Plan",
+        "title": "Verwaltungs-Plan (Monatlich)",
         "price": "5,99€",
         "period": "/ Monat",
-        "features": ["Voller Zugriff für administrative Aufgaben"]
+        "features": ["Zugang zu allen Stellenangeboten", "Direkter Chat mit Betrieben", "SOS-Job-Benachrichtigungen"]
       },
       "farm_s": {
-        "title": "Betriebs-Paket S",
+        "title": "Betriebspaket S (Monatlich)",
         "price": "7,99€",
         "period": "/ Monat",
-        "features": ["10 Jobanzeigen inklusive", "0 SOS-Alarme inklusive"]
+        "features": ["10 Stellenanzeigen inklusive", "0 SOS-Benachrichtigungen inklusive"]
       },
       "farm_m": {
-        "title": "Betriebs-Paket M",
+        "title": "Betriebspaket M (Monatlich)",
         "price": "19,99€",
         "period": "/ Monat",
-        "features": ["20 Jobanzeigen inklusive", "5 SOS-Alarme inklusive"]
+        "features": ["20 Stellenanzeigen inklusive", "5 SOS-Benachrichtigungen inklusive"]
       },
       "farm_l": {
-        "title": "Betriebs-Paket L",
+        "title": "Betriebspaket L (Monatlich)",
         "price": "34,99€",
         "period": "/ Monat",
-        "features": ["20 Jobanzeigen inklusive", "10 SOS-Alarme inklusive", "Top-Platzierung in den Joblisten"]
+        "features": ["20 Stellenanzeigen inklusive", "10 SOS-Benachrichtigungen inklusive", "Top-Platzierung in den Listen"]
       },
       "farm_s_yearly": {
-        "title": "Betriebs-Paket S (Jährlich)",
-        "price": "86,29€",
+        "title": "Betriebspaket S (Jährlich)",
+        "price": "86,90€",
         "period": "/ Jahr",
-        "features": ["120 Jobanzeigen inklusive", "0 SOS-Alarme inklusive"]
+        "features": ["120 Stellenanzeigen inklusive", "0 SOS-Benachrichtigungen inklusive"]
       },
       "farm_m_yearly": {
-        "title": "Betriebs-Paket M (Jährlich)",
-        "price": "215,89€",
+        "title": "Betriebspaket M (Jährlich)",
+        "price": "214,99€",
         "period": "/ Jahr",
-        "features": ["240 Jobanzeigen inklusive", "60 SOS-Alarme inklusive"]
+        "features": ["240 Stellenanzeigen inklusive", "60 SOS-Benachrichtigungen inklusive"]
       },
       "farm_l_yearly": {
-        "title": "Betriebs-Paket L (Jährlich)",
-        "price": "377,89€",
+        "title": "Betriebspaket L (Jährlich)",
+        "price": "379,99€",
         "period": "/ Jahr",
-        "features": ["240 Jobanzeigen inklusive", "120 SOS-Alarme inklusive", "Top-Platzierung in den Joblisten"]
+        "features": ["240 Stellenanzeigen inklusive", "120 SOS-Benachrichtigungen inklusive", "Top-Platzierung in den Listen"]
       }
     }
+  },
+  "manageSubscription": {
+    "errorTitle": "Fehler",
+    "loadDataError": "Daten konnten nicht geladen werden.",
+    "successTitle": "Erfolg",
+    "updateSuccess": "Dein Plan wurde aktualisiert.",
+    "updateError": "Dein Plan konnte nicht aktualisiert werden.",
+    "title": "Abonnement verwalten",
+    "subtitle": "Hier können Sie Ihren aktuellen Plan einsehen und ändern.",
+    "changePlan": "Plan ändern",
+    "active": "Aktiv",
+    "legalHeader": "Abonnement- & Kündigungsbedingungen",
+    "legalNotice": "Dein Abonnement verlängert sich automatisch um den von dir gewählten Zeitraum (monatlich oder jährlich). Du kannst dein Abo jederzeit mit einer Frist von einem Monat kündigen. Bitte beachte, dass nicht genutztes Guthaben (z. B. SOS-Nachrichten, Stellenanzeigen etc.) oder nicht genutzte Zeiträume nicht erstattet werden."
   }
 }

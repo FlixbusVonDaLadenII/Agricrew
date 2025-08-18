@@ -38,6 +38,11 @@ interface FarmProfileData {
     farm_longitude?: number | null;
 }
 
+interface QuotaData {
+    jobs: number;
+    sos: number;
+}
+
 export default function AddJobScreen() {
     const { t, i18n } = useTranslation();
     const insets = useSafeAreaInsets();
@@ -52,6 +57,9 @@ export default function AddJobScreen() {
     const [farmProfile, setFarmProfile] = useState<FarmProfileData | null>(null);
     const [loadingUser, setLoadingUser] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+
+    const [quotas, setQuotas] = useState<QuotaData>({ jobs: 0, sos: 0 });
+    const [loadingQuotas, setLoadingQuotas] = useState(true);
 
     // Form States
     const [title, setTitle] = useState('');
@@ -118,17 +126,39 @@ export default function AddJobScreen() {
     useEffect(() => {
         if (session?.user) {
             setLoadingUser(true);
+            setLoadingQuotas(true);
+
+            // Fetch user profile
             supabase.from('profiles').select('role, farm_location_address, farm_latitude, farm_longitude').eq('id', session.user.id).single()
                 .then(({ data, error }) => {
                     if (error) console.error('Error fetching user profile:', error);
                     setFarmProfile(data as FarmProfileData | null);
                     setLoadingUser(false);
                 });
+
+            // Fetch job quotas using the correct column names from your table
+            supabase.from('farm_quotas')
+                .select('remaining_jobs, remaining_sos')
+                .eq('farm_id', session.user.id)
+                .single()
+                .then(({ data, error }) => {
+                    if (data) {
+                        setQuotas({ jobs: data.remaining_jobs || 0, sos: data.remaining_sos || 0 });
+                    }
+                    if (error) {
+                        console.error('Error fetching quotas:', error);
+                        setQuotas({ jobs: 0, sos: 0 });
+                    }
+                    setLoadingQuotas(false);
+                });
+
         } else {
             setFarmProfile(null);
             setLoadingUser(false);
+            setLoadingQuotas(false);
         }
     }, [session]);
+
 
     useEffect(() => { setTempCountry(country); }, [country, countryPickerVisible]);
     useEffect(() => { setTempRegion(region); }, [region, regionPickerVisible]);
@@ -145,6 +175,8 @@ export default function AddJobScreen() {
             setLocation(farmProfile.farm_location_address);
             setSelectedLocationCoords({ lat: farmProfile.farm_latitude, lng: farmProfile.farm_longitude });
             Alert.alert(t('addJob.locationSet'), t('addJob.locationSetMessage'));
+        } else {
+            Alert.alert(t('addJob.alertNoFarmAddressTitle'), t('addJob.alertNoFarmAddressMessage'));
         }
     };
 
@@ -152,7 +184,7 @@ export default function AddJobScreen() {
     const toggleJobType = (typeKey: string) => setJobTypes(prev => prev.includes(typeKey) ? prev.filter(t => t !== typeKey) : [...prev, typeKey]);
 
     const handlePurchaseSos = async () => {
-        Alert.alert("Purchase Simulation", "This would open the RevenueCat purchase flow for a single SOS tag.");
+        Alert.alert(t('addJob.purchaseSimulationTitle'), t('addJob.purchaseSimulationMessage'));
     }
 
     const handleAddJob = async () => {
@@ -291,7 +323,7 @@ export default function AddJobScreen() {
                         </View>
                         <View style={styles.sectionCard}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionLocation')}</Text>
-                            {farmProfile?.farm_location_address && (
+                            {farmProfile?.role === 'Betrieb' && (
                                 <TouchableOpacity style={styles.useFarmAddressButton} onPress={useFarmAddress}>
                                     <MaterialCommunityIcons name="office-building-marker-outline" size={20} color={themeColors.primary} />
                                     <Text style={styles.useFarmAddressButtonText}>{t('addJob.useFarmAddress')}</Text>
@@ -347,6 +379,17 @@ export default function AddJobScreen() {
                                 <Switch trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary + '80' }} thumbColor={offersAccommodation ? themeColors.primary : themeColors.textSecondary} onValueChange={setOffersAccommodation} value={offersAccommodation} />
                             </View>
                         </View>
+
+                        <View style={styles.quotaContainer}>
+                            {loadingQuotas ? (
+                                <ActivityIndicator color={themeColors.textSecondary} />
+                            ) : (
+                                <Text style={styles.quotaText}>
+                                    {`Jobs: ${quotas.jobs}   SOS: ${quotas.sos}`}
+                                </Text>
+                            )}
+                        </View>
+
                         <TouchableOpacity style={styles.submitButton} onPress={handleAddJob} disabled={submitting}>{submitting ? <ActivityIndicator color={themeColors.background} /> : <Text style={styles.submitButtonText}>{t('addJob.buttonPublish')}</Text>}</TouchableOpacity>
                     </View>
                 </Animated.ScrollView>
@@ -405,11 +448,21 @@ const styles = StyleSheet.create({
     jobTypeText: { fontFamily: baseFontFamily, color: themeColors.text, fontSize: 15 },
     jobTypeTextSelected: { color: themeColors.background, fontWeight: 'bold' },
     toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: SPACING.small, marginBottom: SPACING.small },
-    submitButton: { backgroundColor: themeColors.primary, paddingVertical: 18, borderRadius: 15, alignItems: 'center', marginTop: SPACING.xlarge, shadowColor: themeColors.primaryDark, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 },
+    submitButton: { backgroundColor: themeColors.primary, paddingVertical: 18, borderRadius: 15, alignItems: 'center', marginTop: SPACING.medium, shadowColor: themeColors.primaryDark, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 },
     submitButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 19, fontWeight: 'bold' },
     suggestionsList: { maxHeight: 200, backgroundColor: themeColors.surface, borderRadius: 10, borderWidth: 1, borderColor: themeColors.border, marginTop: -SPACING.medium + 2, marginBottom: SPACING.medium, },
     suggestionItem: { padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.border, },
     suggestionText: { color: themeColors.text, fontSize: 16, },
     useFarmAddressButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: themeColors.primaryLight + '20', paddingVertical: 12, borderRadius: 10, marginBottom: 20, borderWidth: 1, borderColor: themeColors.primary, },
     useFarmAddressButtonText: { color: themeColors.primary, fontSize: 16, fontWeight: '600', marginLeft: 8, },
+    quotaContainer: {
+        alignItems: 'center',
+        marginVertical: SPACING.large,
+    },
+    quotaText: {
+        fontFamily: baseFontFamily,
+        fontSize: 15,
+        color: themeColors.textSecondary,
+        fontStyle: 'italic',
+    },
 });
