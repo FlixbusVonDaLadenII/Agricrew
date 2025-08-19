@@ -48,6 +48,12 @@
     },
     "updates": {
       "url": "https://u.expo.dev/41096993-00de-4595-960d-c5e6fe1c40f8"
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png",
+      "themeColor": "#4CAF50",
+      "backgroundColor": "#ffffff",
+      "display": "standalone"
     }
   }
 }
