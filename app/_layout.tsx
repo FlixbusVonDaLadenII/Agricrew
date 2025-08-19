@@ -34,7 +34,7 @@ const InitialLayout = () => {
         } else if (!session && !inAuthFlow) {
             router.replace('/(auth)/login');
         }
-    }, [session, isLoading, router]);
+    }, [session, isLoading, router, segments]);
 
     useEffect(() => {
         if (session?.user?.id) {

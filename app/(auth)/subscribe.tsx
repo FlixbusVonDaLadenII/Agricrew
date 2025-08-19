@@ -83,7 +83,6 @@ export default function SubscriptionScreen() {
     const params = useLocalSearchParams();
     const { width } = useWindowDimensions();
     const isLargeScreen = width >= 768;
-
     const [profile, setProfile] = useState<Profile>(null);
     const [loading, setLoading] = useState(true);
     const [isSubscribing, setIsSubscribing] = useState(false);
