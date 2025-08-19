@@ -239,6 +239,14 @@ export default function AddJobScreen() {
             await supabase.rpc('decrement_job_quota', { farm_id_input: session.user.id });
             if (isUrgent) {
                 await supabase.rpc('decrement_sos_quota', { farm_id_input: session.user.id });
+                // Notify all workers about the urgent job
+                await supabase.functions.invoke('notify', {
+                    body: {
+                        broadcast: true,
+                        title: t('addJob.urgentNotificationTitle', { defaultValue: 'Urgent job posted' }),
+                        body: title,
+                    },
+                });
             }
 
             Alert.alert(t('addJob.alertSuccess'), t('addJob.alertSuccessMessage'));

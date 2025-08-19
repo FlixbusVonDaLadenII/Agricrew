@@ -37,7 +37,7 @@ const getNotificationPermission = async (): Promise<boolean> => {
     return true;
 };
 
-// --- Helper Function 2: Fetch the Token ---
+// --- Helper Functions 2/3: Fetch Tokens for Native and Web ---
 const fetchExpoPushToken = async (): Promise<string | null> => {
     if (!Device.isDevice) {
         console.warn('[Push Service] Cannot get token on a simulator or emulator.');
@@ -66,8 +66,24 @@ const fetchExpoPushToken = async (): Promise<string | null> => {
     }
 };
 
+const fetchWebPushToken = async (): Promise<string | null> => {
+    try {
+        console.log('[Push Service] Fetching browser FCM token...');
+        const token = (
+            await Notifications.getDevicePushTokenAsync({
+                devicePushTokenService: 'fcm',
+            })
+        ).data;
+        console.log(`[Push Service] Browser token fetched: ${token}`);
+        return token;
+    } catch (e) {
+        console.error('[Push Service] Error fetching browser token.', e);
+        return null;
+    }
+};
+
 // --- Main Function (Exported) ---
-export const savePushToken = async (userId: string) => {
+export const savePushToken = async (userId: string): Promise<string | null> => {
     console.log('--- [Push Service] Starting token registration process... ---');
 
     // 1. Check for User ID
@@ -84,16 +100,33 @@ export const savePushToken = async (userId: string) => {
     }
 
     // 3. Get Token
-    const token = await fetchExpoPushToken();
+    const token =
+        Platform.OS === 'web' ? await fetchWebPushToken() : await fetchExpoPushToken();
     if (!token) {
         return;
     }
 
-    // 4. Save Token to Supabase
+    // 4. Merge with existing tokens and save to Supabase
     console.log(`[Push Service] Attempting to save token to database for user ${userId}...`);
+    const { data: existingData, error: fetchError } = await supabase
+        .from('profiles')
+        .select('push_token')
+        .eq('id', userId)
+        .single();
+    if (fetchError) {
+        console.error('[Push Service] Error fetching existing token:', fetchError);
+        return;
+    }
+
+    const existingTokens = existingData?.push_token || {};
+    const updatedTokens = {
+        ...existingTokens,
+        ...(Platform.OS === 'web' ? { web: token } : { expo: token }),
+    };
+
     const { error } = await supabase
         .from('profiles')
-        .update({ push_token: token })
+        .update({ push_token: updatedTokens })
         .eq('id', userId);
 
     if (error) {
@@ -101,4 +134,6 @@ export const savePushToken = async (userId: string) => {
     } else {
         console.log('✅ [Push Service] SUCCESS: Token saved to database.');
     }
+
+    return token;
 };

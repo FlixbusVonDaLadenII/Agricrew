@@ -257,11 +257,22 @@ export default function ChatScreen() {
         const messageContent = newMessage.trim();
         if (!messageContent || !session?.user || !chatId) return;
         setNewMessage('');
-        const { error } = await supabase.from('messages').insert({ chat_id: chatId, sender_id: session.user.id, content: messageContent });
+        const { error } = await supabase
+            .from('messages')
+            .insert({ chat_id: chatId, sender_id: session.user.id, content: messageContent });
         if (error) {
             console.error('Error sending message:', error);
             setNewMessage(messageContent);
             Alert.alert(t('common.error'), t('chat.sendMessageError'));
+        } else if (otherUser?.user_id) {
+            // Trigger push notification to the other participant
+            await supabase.functions.invoke('notify', {
+                body: {
+                    user_id: otherUser.user_id,
+                    title: t('chat.newMessageTitle', { defaultValue: 'New message' }),
+                    body: messageContent,
+                },
+            });
         }
     };
 
