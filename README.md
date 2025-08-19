@@ -48,3 +48,13 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Web deployment
+
+To create a production web build with the custom service worker, run:
+
+```bash
+npm run build:web
+```
+
+Deploy the generated `web-build` directory to a hosting provider such as Netlify, Vercel, or Supabase Hosting, and map your desired domain via DNS.
