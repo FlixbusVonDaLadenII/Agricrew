@@ -13,10 +13,11 @@ import {
     ActivityIndicator,
     Switch,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/lib/SessionProvider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { getThemeColors, Theme } from '@/theme/colors';
 
@@ -76,6 +77,7 @@ const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, t }) => {
 export default function SubscriptionScreen() {
     const { t } = useTranslation();
     const { session } = useSession();
+    const params = useLocalSearchParams();
 
     const [profile, setProfile] = useState<Profile>(null);
     const [loading, setLoading] = useState(true);
@@ -128,38 +130,47 @@ export default function SubscriptionScreen() {
         loadData();
     }, [session, t, router]);
 
+    useEffect(() => {
+        const sessionId = params.session_id as string | undefined;
+        if (!sessionId || !session?.user) return;
+
+        const verifySession = async () => {
+            try {
+                const { error } = await supabase.functions.invoke('verify-checkout-session', {
+                    body: { sessionId, userId: session.user.id },
+                });
+                if (error) throw error;
+                Alert.alert(t('subscribe.successTitle'), t('subscribe.purchaseSuccess'));
+                router.replace('/');
+            } catch (err) {
+                console.error('Error verifying checkout session:', err);
+            }
+        };
+
+        verifySession();
+    }, [params, session, t, router]);
+
     const handlePurchase = async () => {
         if (!selectedPlanId || !session?.user) return;
         setIsSubscribing(true);
 
         try {
-            const now = new Date();
-            const isYearlyPlan = selectedPlanId.includes('yearly');
-            // Corrected expiration logic for monthly plans
-            const expiresAt = new Date(now);
-            if (isYearlyPlan) {
-                expiresAt.setFullYear(now.getFullYear() + 1);
-            } else {
-                expiresAt.setMonth(now.getMonth() + 1);
-            }
-
-            const { error } = await supabase
-                .from('user_subscriptions')
-                .upsert({
-                    user_id: session.user.id,
-                    role: selectedPlanId,
-                    is_active: true,
-                    subscribed_at: now.toISOString(),
-                    expires_at: expiresAt.toISOString(),
-                });
+            const successUrl = Linking.createURL('/(auth)/subscribe');
+            const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+                body: {
+                    priceId: selectedPlanId,
+                    userId: session.user.id,
+                    successUrl,
+                },
+            });
 
             if (error) throw error;
-
-            setCurrentSubscription(selectedPlanId);
-            Alert.alert(t('subscribe.successTitle'), t('subscribe.purchaseSuccess'));
-            router.replace('/');
+            const { url } = data as { url: string };
+            if (url) {
+                await Linking.openURL(url);
+            }
         } catch (err) {
-            console.error('Error updating subscription:', err);
+            console.error('Error creating checkout session:', err);
             Alert.alert(t('subscribe.purchaseErrorTitle'), t('subscribe.purchaseErrorMessage'));
         } finally {
             setIsSubscribing(false);
