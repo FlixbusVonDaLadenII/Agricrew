@@ -13,6 +13,7 @@ import {
     Keyboard,
     ScrollView,
     Alert,
+    useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getThemeColors, Theme } from '@/theme/colors';
@@ -31,6 +32,9 @@ const baseFontFamily = Platform.select({
 
 const LoginScreen = () => {
     const { t, i18n } = useTranslation();
+    const { width } = useWindowDimensions();
+    const isLargeScreen = width >= 768;
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -91,23 +95,48 @@ const LoginScreen = () => {
             >
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <ScrollView
-                        contentContainerStyle={styles.scrollContent}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            {
+                                paddingHorizontal: width * 0.05,
+                                paddingVertical: isLargeScreen ? width * 0.1 : 40,
+                            },
+                        ]}
                         keyboardShouldPersistTaps="handled"
                     >
-                        <SafeAreaView style={styles.innerContainer}>
+                        <SafeAreaView
+                            style={[styles.innerContainer, { maxWidth: width * 0.9 }]}
+                        >
                             <View style={styles.headerContainer}>
-                                <Text style={styles.title}>{t('login.welcomeBack')}</Text>
+                                <Text
+                                    style={[
+                                        styles.title,
+                                        isLargeScreen && { fontSize: 48 },
+                                    ]}
+                                >
+                                    {t('login.welcomeBack')}
+                                </Text>
                                 <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
                             </View>
 
-                            <View style={styles.langContainer}>
+                            <View
+                                style={[
+                                    styles.langContainer,
+                                    { maxWidth: width * 0.8 },
+                                ]}
+                            >
                                 <TouchableOpacity style={[styles.langButton, i18n.language === 'en' && styles.langButtonSelected]} onPress={() => i18n.changeLanguage('en')}><Text style={[styles.langButtonText, i18n.language === 'en' && styles.langButtonTextSelected]}>{t('login.english')}</Text></TouchableOpacity>
                                 <TouchableOpacity style={[styles.langButton, i18n.language === 'de' && styles.langButtonSelected]} onPress={() => i18n.changeLanguage('de')}><Text style={[styles.langButtonText, i18n.language === 'de' && styles.langButtonTextSelected]}>{t('login.german')}</Text></TouchableOpacity>
                             </View>
 
                             {error && <Text style={styles.errorText}>{error}</Text>}
 
-                            <View style={styles.formContainer}>
+                            <View
+                                style={[
+                                    styles.formContainer,
+                                    isLargeScreen && { padding: 32 },
+                                ]}
+                            >
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>{t('login.emailLabel')}</Text>
                                     <TextInput
@@ -172,7 +201,7 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
     gradientBackground: { flex: 1, },
     container: { flex: 1, },
-    scrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 40, },
+    scrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
     innerContainer: { width: '100%', alignItems: 'center', },
     headerContainer: { marginBottom: 24, alignItems: 'center', },
     title: { fontFamily: baseFontFamily, fontSize: 36, fontWeight: 'bold', color: themeColors.text, marginBottom: 8, },
@@ -193,7 +222,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginBottom: 24,
         width: '100%',
-        maxWidth: 400,
         backgroundColor: themeColors.surface,
         borderRadius: 10,
         padding: 4,

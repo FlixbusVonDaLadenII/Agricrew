@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView,
     ActivityIndicator, Alert, Platform, Switch, Modal, FlatList, StatusBar,
-    KeyboardAvoidingView, Keyboard, Animated
+    KeyboardAvoidingView, Keyboard, Animated, useWindowDimensions
 } from 'react-native';
 import { getThemeColors, Theme } from '@/theme/colors';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -47,6 +47,8 @@ export default function AddJobScreen() {
     const { t, i18n } = useTranslation();
     const insets = useSafeAreaInsets();
     const scrollY = useRef(new Animated.Value(0)).current;
+    const { width } = useWindowDimensions();
+    const isLargeScreen = width >= 768;
 
     const jobTypesOptions = t('jobTypes', { returnObjects: true }) as Record<string, string>;
     const jobTypeKeys = Object.keys(jobTypesOptions);
@@ -313,15 +315,15 @@ export default function AddJobScreen() {
                     onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                     keyboardShouldPersistTaps="handled"
                 >
-                    <View style={styles.formContainer}>
-                        <View style={styles.sectionCard}>
+                    <View style={[styles.formContainer, { paddingHorizontal: width * 0.05 }]}> 
+                        <View style={[styles.sectionCard, { width: isLargeScreen ? width * 0.8 : '100%' }]}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionJobDetails')}</Text>
                             <Text style={styles.label}>{t('addJob.labelJobTitle')} <Text style={styles.requiredIndicator}>*</Text></Text>
                             <TextInput style={styles.input} placeholder={t('addJob.placeholderJobTitle')} placeholderTextColor={themeColors.textHint} value={title} onChangeText={setTitle} />
                             <Text style={styles.label}>{t('addJob.labelDescription')} <Text style={styles.requiredIndicator}>*</Text></Text>
                             <TextInput style={[styles.input, styles.textArea]} placeholder={t('addJob.placeholderDescription')} placeholderTextColor={themeColors.textHint} multiline value={description} onChangeText={setDescription} />
                         </View>
-                        <View style={styles.sectionCard}>
+                        <View style={[styles.sectionCard, { width: isLargeScreen ? width * 0.8 : '100%' }]}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionLocation')}</Text>
                             {farmProfile?.role === 'Betrieb' && (
                                 <TouchableOpacity style={styles.useFarmAddressButton} onPress={useFarmAddress}>
@@ -358,19 +360,19 @@ export default function AddJobScreen() {
                                 />
                             )}
                         </View>
-                        <View style={styles.sectionCard}>
+                        <View style={[styles.sectionCard, { width: isLargeScreen ? width * 0.8 : '100%' }]}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionCompensation')}</Text>
                             <Text style={styles.label}>{t('addJob.labelSalary')}</Text>
                             <TextInput style={styles.input} placeholder={t('addJob.placeholderSalary')} placeholderTextColor={themeColors.textHint} keyboardType="numeric" value={salaryPerHour} onChangeText={setSalaryPerHour} />
                             <Text style={styles.label}>{t('addJob.labelJobType')}</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.jobTypeScrollContainer}>{jobTypeKeys.map((key) => { return (<TouchableOpacity key={key} style={[styles.jobTypeButton, jobTypes.includes(key) && styles.jobTypeButtonSelected]} onPress={() => toggleJobType(key)}><Text style={[styles.jobTypeText, jobTypes.includes(key) && styles.jobTypeTextSelected]}>{jobTypesOptions[key]}</Text></TouchableOpacity>); })}</ScrollView>
                         </View>
-                        <View style={styles.sectionCard}>
+                        <View style={[styles.sectionCard, { width: isLargeScreen ? width * 0.8 : '100%' }]}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionRequirements')}</Text>
                             <Text style={styles.label}>{t('addJob.labelLicenses')}</Text>
                             <View style={styles.licensesContainer}>{DRIVING_LICENSES.map((license) => (<TouchableOpacity key={license} style={[styles.licenseCheckbox, selectedLicenses.includes(license) && styles.licenseCheckboxSelected]} onPress={() => toggleLicense(license)}><Text style={[styles.licenseText, selectedLicenses.includes(license) && styles.licenseTextSelected]}>{license}</Text></TouchableOpacity>))}</View>
                         </View>
-                        <View style={styles.sectionCard}>
+                        <View style={[styles.sectionCard, { width: isLargeScreen ? width * 0.8 : '100%' }]}>
                             <Text style={styles.sectionTitle}>{t('addJob.sectionStatus')}</Text>
                             <View style={styles.toggleRow}><Text style={styles.label}>{t('addJob.labelActive')}</Text><Switch trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary + '80' }} thumbColor={isActive ? themeColors.primary : themeColors.textSecondary} onValueChange={setIsActive} value={isActive} /></View>
                             <View style={styles.toggleRow}><Text style={styles.label}>{t('addJob.labelUrgent')}</Text><Switch trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary + '80' }} thumbColor={isUrgent ? themeColors.primary : themeColors.textSecondary} onValueChange={setIsUrgent} value={isUrgent} /></View>
@@ -411,8 +413,8 @@ const styles = StyleSheet.create({
     permissionDeniedContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.large, backgroundColor: themeColors.background },
     permissionDeniedText: { fontFamily: baseFontFamily, fontSize: 18, color: themeColors.textSecondary, textAlign: 'center', marginTop: SPACING.medium },
     keyboardAvoidingView: { flex: 1 },
-    formContainer: { paddingHorizontal: SPACING.medium, paddingBottom: SPACING.xlarge, paddingTop: SPACING.medium },
-    sectionCard: { width: '100%', backgroundColor: themeColors.surface, borderRadius: 15, padding: SPACING.large, marginBottom: SPACING.large, shadowColor: 'rgba(0,0,0,0.1)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 5 },
+    formContainer: { paddingBottom: SPACING.xlarge, paddingTop: SPACING.medium },
+    sectionCard: { backgroundColor: themeColors.surface, borderRadius: 15, padding: SPACING.large, marginBottom: SPACING.large, shadowColor: 'rgba(0,0,0,0.1)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 5 },
     sectionTitle: { fontFamily: baseFontFamily, fontSize: 18, fontWeight: 'bold', color: themeColors.text, marginBottom: SPACING.medium, paddingBottom: SPACING.small, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.border },
     label: { fontFamily: baseFontFamily, fontSize: 15, color: themeColors.text, marginBottom: SPACING.xsmall, fontWeight: '500' },
     requiredIndicator: { color: themeColors.primary, fontWeight: 'bold' },

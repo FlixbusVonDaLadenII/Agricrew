@@ -12,11 +12,13 @@ import {
     Alert,
     ActivityIndicator,
     Switch,
+    useWindowDimensions,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/lib/SessionProvider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { getThemeColors, Theme } from '@/theme/colors';
 
@@ -45,10 +47,12 @@ const subscriptionPlans = {
 const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, t }) => {
     const details = t(`subscribe.plans.${plan.id}`, { returnObjects: true });
     const displayPrice = details.price;
+    const { width } = useWindowDimensions();
+    const cardWidth = width >= 768 ? width * 0.6 : width * 0.9;
 
     return (
         <TouchableOpacity
-            style={[styles.planCard, isSelected && styles.selectedPlan]}
+            style={[styles.planCard, { width: cardWidth }, isSelected && styles.selectedPlan]}
             onPress={() => onSelect(plan.id)}
         >
             <MaterialCommunityIcons
@@ -76,6 +80,9 @@ const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, t }) => {
 export default function SubscriptionScreen() {
     const { t } = useTranslation();
     const { session } = useSession();
+    const params = useLocalSearchParams();
+    const { width } = useWindowDimensions();
+    const isLargeScreen = width >= 768;
 
     const [profile, setProfile] = useState<Profile>(null);
     const [loading, setLoading] = useState(true);
@@ -128,38 +135,47 @@ export default function SubscriptionScreen() {
         loadData();
     }, [session, t, router]);
 
+    useEffect(() => {
+        const sessionId = params.session_id as string | undefined;
+        if (!sessionId || !session?.user) return;
+
+        const verifySession = async () => {
+            try {
+                const { error } = await supabase.functions.invoke('verify-checkout-session', {
+                    body: { sessionId, userId: session.user.id },
+                });
+                if (error) throw error;
+                Alert.alert(t('subscribe.successTitle'), t('subscribe.purchaseSuccess'));
+                router.replace('/');
+            } catch (err) {
+                console.error('Error verifying checkout session:', err);
+            }
+        };
+
+        verifySession();
+    }, [params, session, t, router]);
+
     const handlePurchase = async () => {
         if (!selectedPlanId || !session?.user) return;
         setIsSubscribing(true);
 
         try {
-            const now = new Date();
-            const isYearlyPlan = selectedPlanId.includes('yearly');
-            // Corrected expiration logic for monthly plans
-            const expiresAt = new Date(now);
-            if (isYearlyPlan) {
-                expiresAt.setFullYear(now.getFullYear() + 1);
-            } else {
-                expiresAt.setMonth(now.getMonth() + 1);
-            }
-
-            const { error } = await supabase
-                .from('user_subscriptions')
-                .upsert({
-                    user_id: session.user.id,
-                    role: selectedPlanId,
-                    is_active: true,
-                    subscribed_at: now.toISOString(),
-                    expires_at: expiresAt.toISOString(),
-                });
+            const successUrl = Linking.createURL('/(auth)/subscribe');
+            const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+                body: {
+                    priceId: selectedPlanId,
+                    userId: session.user.id,
+                    successUrl,
+                },
+            });
 
             if (error) throw error;
-
-            setCurrentSubscription(selectedPlanId);
-            Alert.alert(t('subscribe.successTitle'), t('subscribe.purchaseSuccess'));
-            router.replace('/');
+            const { url } = data as { url: string };
+            if (url) {
+                await Linking.openURL(url);
+            }
         } catch (err) {
-            console.error('Error updating subscription:', err);
+            console.error('Error creating checkout session:', err);
             Alert.alert(t('subscribe.purchaseErrorTitle'), t('subscribe.purchaseErrorMessage'));
         } finally {
             setIsSubscribing(false);
@@ -233,9 +249,19 @@ export default function SubscriptionScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    {
+                        paddingHorizontal: width * 0.05,
+                        paddingBottom: width * 0.2,
+                    },
+                ]}
+            >
                 <MaterialCommunityIcons name="shield-lock-outline" size={60} color={themeColors.primary} />
-                <Text style={styles.title}>{t('subscribe.title')}</Text>
+                <Text style={[styles.title, isLargeScreen && { fontSize: 34 }]}>
+                    {t('subscribe.title')}
+                </Text>
                 <Text style={styles.subtitle}>
                     {t('subscribe.subtitle')}
                     <Text style={{ fontWeight: 'bold' }}>
@@ -270,10 +296,10 @@ export default function SubscriptionScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
-    scrollContent: { alignItems: 'center', padding: 24, paddingBottom: 150 },
+    scrollContent: { alignItems: 'center' },
     title: { fontFamily: baseFontFamily, fontSize: 28, fontWeight: 'bold', color: themeColors.text, marginVertical: 16, textAlign: 'center' },
     subtitle: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 32 },
-    planCard: { width: '100%', backgroundColor: themeColors.surface, borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 2, borderColor: themeColors.border, alignItems: 'center', overflow: 'hidden' },
+    planCard: { backgroundColor: themeColors.surface, borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 2, borderColor: themeColors.border, alignItems: 'center', overflow: 'hidden' },
     selectedPlan: { borderColor: themeColors.primary, backgroundColor: themeColors.primary + '1A' },
     planTitle: { fontFamily: baseFontFamily, fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginTop: 12 },
     priceContainer: { flexDirection: 'row', alignItems: 'baseline', marginVertical: 8 },
