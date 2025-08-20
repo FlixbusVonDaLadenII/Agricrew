@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
 import {
     StyleSheet,
     View,
@@ -10,6 +10,8 @@ import {
     Alert,
     Image,
     TextInput,
+    Platform,
+    useColorScheme,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useFocusEffect, useRouter, useNavigation } from 'expo-router';
@@ -19,8 +21,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useUnreadChats } from '@/contexts/UnreadChatContext';
 
-const themeColors = getThemeColors('dark');
-
 interface Chat {
     chat_id: string;
     other_user_name: string;
@@ -29,7 +29,6 @@ interface Chat {
     other_user_avatar_url: string | null;
 }
 
-// --- ADDED: Interface for the new message payload ---
 interface MessagePayload {
     new: {
         id: string;
@@ -40,22 +39,32 @@ interface MessagePayload {
     };
 }
 
+const baseFont = Platform.select({
+    ios: 'System',
+    android: 'Roboto',
+    default: 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
+});
+
 export default function ChatListScreen() {
     const { t } = useTranslation();
+    const scheme = useColorScheme();
+    const themeColors = useMemo(
+        () => getThemeColors(scheme === 'dark' ? 'dark' : 'light'),
+        [scheme]
+    );
+
     const [chats, setChats] = useState<Chat[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchText, setSearchText] = useState('');
+    const [isEditMode, setIsEditMode] = useState(false);
+
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { unreadChats } = useUnreadChats();
     const navigation = useNavigation();
 
-    const [searchText, setSearchText] = useState('');
-    const [isEditMode, setIsEditMode] = useState(false);
-
     useLayoutEffect(() => {
-        navigation.setOptions({
-            headerShown: false,
-        });
+        navigation.setOptions({ headerShown: false });
     }, [navigation]);
 
     const fetchChats = useCallback(async () => {
@@ -74,17 +83,17 @@ export default function ChatListScreen() {
             t('chatList.deleteTitle'),
             t('chatList.deleteMessage'),
             [
-                { text: t('common.cancel'), style: "cancel" },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
                     text: t('common.delete'),
-                    style: "destructive",
+                    style: 'destructive',
                     onPress: async () => {
                         const { error } = await supabase.rpc('delete_chat', { chat_id_to_delete: chatIdToDelete });
                         if (error) {
                             Alert.alert(t('common.error'), t('chatList.deleteError'));
-                            console.error("Delete error:", error);
+                            console.error('Delete error:', error);
                         } else {
-                            setChats(currentChats => currentChats.filter(c => c.chat_id !== chatIdToDelete));
+                            setChats(current => current.filter(c => c.chat_id !== chatIdToDelete));
                         }
                     },
                 },
@@ -92,33 +101,20 @@ export default function ChatListScreen() {
         );
     };
 
-    useFocusEffect(
-        useCallback(() => {
-            fetchChats();
-        }, [fetchChats])
-    );
+    useFocusEffect(useCallback(() => { fetchChats(); }, [fetchChats]));
 
-    // --- MODIFICATION START: Optimized real-time updates ---
     useEffect(() => {
         const handleNewMessage = (payload: MessagePayload) => {
             const newMessage = payload.new;
             setChats(currentChats => {
                 const chatIndex = currentChats.findIndex(c => c.chat_id === newMessage.chat_id);
-                // If the chat is already in the list, update it and move it to the top.
                 if (chatIndex > -1) {
-                    const existingChat = { ...currentChats[chatIndex] };
-                    existingChat.last_message = newMessage.content;
-                    existingChat.last_message_time = newMessage.created_at;
+                    const existing = { ...currentChats[chatIndex] };
+                    existing.last_message = newMessage.content;
+                    existing.last_message_time = newMessage.created_at;
 
-                    const newChats = [
-                        existingChat,
-                        ...currentChats.slice(0, chatIndex),
-                        ...currentChats.slice(chatIndex + 1)
-                    ];
-                    return newChats;
+                    return [existing, ...currentChats.slice(0, chatIndex), ...currentChats.slice(chatIndex + 1)];
                 } else {
-                    // If it's a new chat, we still need to fetch the list to get participant details.
-                    // This is a rare case (first message in a new chat).
                     fetchChats();
                     return currentChats;
                 }
@@ -130,7 +126,6 @@ export default function ChatListScreen() {
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, handleNewMessage)
             .subscribe();
 
-        // Profile updates can still use the full refetch as they are less frequent.
         const profileChannel = supabase
             .channel('public:profiles:chat_list')
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, fetchChats)
@@ -141,69 +136,135 @@ export default function ChatListScreen() {
             supabase.removeChannel(profileChannel);
         };
     }, [fetchChats]);
-    // --- MODIFICATION END ---
 
+    const isUnread = (id: string) => unreadChats.has(id);
+    const unreadCount = chats.reduce((acc, c) => acc + (isUnread(c.chat_id) ? 1 : 0), 0);
+
+    const filteredChats = chats.filter(chat =>
+        (chat.other_user_name || '').toLowerCase().includes(searchText.toLowerCase())
+    );
 
     const renderChatItem = ({ item }: { item: Chat }) => {
-        const isUnread = unreadChats.has(item.chat_id);
+        const unread = isUnread(item.chat_id);
 
         return (
-            <View style={styles.chatItemContainer}>
+            <View style={[styles.rowWrapper, { backgroundColor: themeColors.background }]}>
                 {isEditMode && (
                     <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteChat(item.chat_id)}>
-                        <MaterialCommunityIcons name="minus-circle" size={24} color={themeColors.danger} />
+                        <MaterialCommunityIcons name="minus-circle" size={22} color={themeColors.danger} />
                     </TouchableOpacity>
                 )}
+
                 <TouchableOpacity
-                    style={styles.chatItem}
+                    activeOpacity={0.8}
+                    style={[
+                        styles.chatCard,
+                        {
+                            backgroundColor: unread ? themeColors.cardHighlight : themeColors.surface,
+                            borderColor: themeColors.border,
+                            shadowColor: Platform.OS === 'ios' ? '#000' : themeColors.surface,
+                        },
+                    ]}
                     disabled={isEditMode}
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/chats/[id]",
-                        params: { id: item.chat_id }
-                    })}
+                    onPress={() =>
+                        router.push({ pathname: '/(tabs)/chats/[id]', params: { id: item.chat_id } })
+                    }
                 >
                     {item.other_user_avatar_url ? (
                         <Image source={{ uri: item.other_user_avatar_url }} style={styles.avatarImage} />
                     ) : (
-                        <View style={styles.avatarPlaceholder}>
-                            <Text style={styles.avatarText}>{item.other_user_name ? item.other_user_name.charAt(0).toUpperCase() : '?'}</Text>
+                        <View style={[styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
+                            <Text style={[styles.avatarText, { color: themeColors.background }]}>
+                                {item.other_user_name ? item.other_user_name.charAt(0).toUpperCase() : '?'}
+                            </Text>
                         </View>
                     )}
+
                     <View style={styles.chatContent}>
-                        <Text style={[styles.userName, isUnread && styles.unreadText]} numberOfLines={1}>{item.other_user_name || t('chatList.unknownUser')}</Text>
-                        <Text style={[styles.lastMessage, isUnread && styles.unreadText]} numberOfLines={1}>{item.last_message || t('chatList.noMessages')}</Text>
-                    </View>
-                    <View style={styles.metaContainer}>
-                        {item.last_message_time && (
-                            <Text style={styles.timestamp}>
-                                {new Date(item.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <View style={styles.nameRow}>
+                            <Text
+                                style={[
+                                    styles.userName,
+                                    { color: themeColors.text },
+                                    unread && styles.userNameUnread,
+                                ]}
+                                numberOfLines={1}
+                            >
+                                {item.other_user_name || t('chatList.unknownUser')}
                             </Text>
-                        )}
-                        {isUnread && <View style={styles.unreadDot} />}
+                            {item.last_message_time ? (
+                                <Text style={[styles.timestamp, { color: themeColors.textSecondary }]}>
+                                    {new Date(item.last_message_time).toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    })}
+                                </Text>
+                            ) : null}
+                        </View>
+
+                        <Text
+                            style={[
+                                styles.lastMessage,
+                                { color: themeColors.textSecondary },
+                                unread && styles.lastMessageUnread,
+                            ]}
+                            numberOfLines={2}
+                        >
+                            {item.last_message || t('chatList.noMessages')}
+                        </Text>
+
+                        <View style={styles.metaRow}>
+                            {unread && <View style={[styles.unreadDot, { backgroundColor: themeColors.primary }]} />}
+                            {/* room for future tags/badges without layout shift */}
+                        </View>
                     </View>
                 </TouchableOpacity>
             </View>
         );
     };
 
-    const filteredChats = chats.filter(chat =>
-        (chat.other_user_name || '').toLowerCase().includes(searchText.toLowerCase())
-    );
-
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
-            <View style={styles.headerContainer}>
-                <Text style={styles.headerTitle}>{t('chatList.title')}</Text>
-                <TouchableOpacity style={styles.editButton} onPress={() => setIsEditMode(!isEditMode)}>
-                    <Text style={styles.editButtonText}>{isEditMode ? t('chatList.done') : t('chatList.edit')}</Text>
+        <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
+            {/* Header */}
+            <View style={[styles.headerContainer, { borderBottomColor: themeColors.border }]}>
+                <View>
+                    <Text style={[styles.headerTitle, { color: themeColors.text }]}>
+                        {t('chatList.title')}
+                    </Text>
+                </View>
+
+                <TouchableOpacity
+                    style={[styles.editButton, { backgroundColor: themeColors.surfaceHighlight, borderColor: themeColors.border }]}
+                    onPress={() => setIsEditMode(!isEditMode)}
+                    activeOpacity={0.85}
+                >
+                    <MaterialCommunityIcons
+                        name={isEditMode ? 'check' : 'pencil-outline'}
+                        size={18}
+                        color={themeColors.text}
+                        style={{ marginRight: 6 }}
+                    />
+                    <Text style={[styles.editButtonText, { color: themeColors.text }]}>
+                        {isEditMode ? t('chatList.done') : t('chatList.edit')}
+                    </Text>
                 </TouchableOpacity>
             </View>
 
+            {/* Search */}
             <View style={styles.searchContainer}>
-                <View style={styles.searchBar}>
+                <View
+                    style={[
+                        styles.searchBar,
+                        {
+                            backgroundColor: themeColors.surfaceHighlight,
+                            borderColor: themeColors.border,
+                            shadowColor: Platform.OS === 'ios' ? '#000' : 'transparent',
+                        },
+                    ]}
+                >
                     <MaterialCommunityIcons name="magnify" size={20} color={themeColors.textSecondary} />
                     <TextInput
-                        style={styles.searchInput}
+                        style={[styles.searchInput, { color: themeColors.text }]}
                         placeholder={t('chatList.searchPlaceholder')}
                         placeholderTextColor={themeColors.textHint}
                         value={searchText}
@@ -212,16 +273,26 @@ export default function ChatListScreen() {
                 </View>
             </View>
 
-            {loading && chats.length === 0 && <View style={styles.centered}><ActivityIndicator size="large" color={themeColors.primary} /></View>}
-
-            {!loading && filteredChats.length === 0 && (
+            {/* Empty / loading */}
+            {loading && chats.length === 0 && (
                 <View style={styles.centered}>
-                    <MaterialCommunityIcons name="message-text-outline" size={60} color={themeColors.textSecondary} />
-                    <Text style={styles.emptyText}>{searchText ? t('chatList.noResults') : t('chatList.emptyTitle')}</Text>
-                    {!searchText && <Text style={styles.emptySubText}>{t('chatList.emptySubtitle')}</Text>}
+                    <ActivityIndicator size="large" color={themeColors.primary} />
                 </View>
             )}
 
+            {!loading && filteredChats.length === 0 && (
+                <View style={styles.centered}>
+                    <MaterialCommunityIcons name="message-text-outline" size={56} color={themeColors.textSecondary} />
+                    <Text style={[styles.emptyText, { color: themeColors.text }]}>{searchText ? t('chatList.noResults') : t('chatList.emptyTitle')}</Text>
+                    {!searchText && (
+                        <Text style={[styles.emptySubText, { color: themeColors.textSecondary }]}>
+                            {t('chatList.emptySubtitle')}
+                        </Text>
+                    )}
+                </View>
+            )}
+
+            {/* List */}
             <FlatList
                 data={filteredChats}
                 renderItem={renderChatItem}
@@ -229,142 +300,126 @@ export default function ChatListScreen() {
                 refreshControl={
                     <RefreshControl refreshing={loading} onRefresh={fetchChats} tintColor={themeColors.primary} />
                 }
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingBottom: 16,
+                    width: '100%',
+                    maxWidth: 960,           // nicer on laptops
+                    alignSelf: 'center',
+                }}
+                ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             />
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: themeColors.background,
-    },
+    container: { flex: 1 },
+
+    // Header
     headerContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-end',
         paddingHorizontal: 16,
-        paddingTop: 10,
-        paddingBottom: 10,
+        paddingTop: 8,
+        paddingBottom: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
     },
     headerTitle: {
-        fontSize: 34,
-        fontWeight: 'bold',
-        color: themeColors.text,
+        fontFamily: baseFont,
+        fontSize: 28,
+        fontWeight: '700' as const,
+        letterSpacing: 0.2,
+    },
+    headerSubtitle: {
+        fontFamily: baseFont,
+        fontSize: 13,
+        marginTop: 2,
     },
     editButton: {
-        padding: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        height: 34,
+        borderRadius: 10,
+        borderWidth: StyleSheet.hairlineWidth,
     },
     editButtonText: {
-        color: themeColors.primary,
-        fontSize: 17,
-        fontWeight: '600',
+        fontFamily: baseFont,
+        fontSize: 14,
+        fontWeight: '600' as const,
     },
+
+    // Search
     searchContainer: {
         paddingHorizontal: 16,
-        paddingBottom: 10,
+        paddingTop: 10,
+        paddingBottom: 6,
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: themeColors.surfaceHighlight,
-        borderRadius: 10,
-        paddingHorizontal: 10,
-        height: 40,
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        height: 44,
+        borderWidth: StyleSheet.hairlineWidth,
+        ...Platform.select({
+            ios: { shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
+            android: { elevation: 1 },
+            default: {},
+        }),
     },
     searchInput: {
         flex: 1,
         marginLeft: 8,
-        color: themeColors.text,
+        fontFamily: baseFont,
         fontSize: 16,
     },
-    centered: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
+
+    // Rows (card style)
+    rowWrapper: {
+        paddingHorizontal: 16,
     },
-    emptyText: {
-        color: themeColors.text,
-        fontSize: 18,
-        fontWeight: '600',
-        textAlign: 'center',
-        marginTop: 16,
-    },
-    emptySubText: {
-        color: themeColors.textSecondary,
-        fontSize: 14,
-        textAlign: 'center',
-        marginTop: 8,
-    },
-    chatItemContainer: {
+    chatCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: themeColors.background,
-        paddingLeft: 16,
+        padding: 12,
+        borderRadius: 14,
+        borderWidth: StyleSheet.hairlineWidth,
+        ...Platform.select({
+            ios: { shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+            android: { elevation: 1 },
+            default: {},
+        }),
     },
-    deleteButton: {
-        marginRight: 10,
-    },
-    chatItem: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingRight: 16,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: themeColors.border,
-    },
-    avatarImage: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        marginRight: 15,
-        backgroundColor: themeColors.surfaceHighlight,
-    },
+
+    avatarImage: { width: 48, height: 48, borderRadius: 24, marginRight: 12 },
     avatarPlaceholder: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: themeColors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15,
+        width: 48, height: 48, borderRadius: 24, marginRight: 12,
+        justifyContent: 'center', alignItems: 'center',
     },
-    avatarText: {
-        color: themeColors.background,
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
-    chatContent: {
-        flex: 1,
-    },
-    userName: {
-        color: themeColors.text,
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 4,
-    },
-    lastMessage: {
-        color: themeColors.textSecondary,
-        fontSize: 14,
-    },
-    metaContainer: {
-        alignItems: 'flex-end',
-    },
-    timestamp: {
-        color: themeColors.textSecondary,
-        fontSize: 12,
-        marginBottom: 8,
-    },
-    unreadDot: {
-        backgroundColor: themeColors.primary,
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-    },
-    unreadText: {
-        color: themeColors.text,
-        fontWeight: 'bold',
-    },
+    avatarText: { fontFamily: baseFont, fontSize: 18, fontWeight: '700' as const },
+
+    chatContent: { flex: 1 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+
+    userName: { fontFamily: baseFont, fontSize: 16, fontWeight: '700' as const },
+    userNameUnread: { fontWeight: '800' as const },
+
+    lastMessage: { fontFamily: baseFont, fontSize: 14, marginTop: 2 },
+    lastMessageUnread: { fontWeight: '600' as const },
+
+    metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+    unreadDot: { width: 10, height: 10, borderRadius: 5 },
+
+    // Misc
+    deleteButton: { marginRight: 10 },
+
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+
+    emptyText: { fontFamily: baseFont, fontSize: 18, fontWeight: '700' as const, textAlign: 'center', marginTop: 16 },
+    emptySubText: { fontFamily: baseFont, fontSize: 14, textAlign: 'center', marginTop: 8 },
+
+    timestamp: { fontFamily: baseFont, fontSize: 12, marginLeft: 8 },
 });

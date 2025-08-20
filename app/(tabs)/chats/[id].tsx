@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     StyleSheet,
     View,
@@ -13,21 +13,21 @@ import {
     Modal,
     ScrollView,
     Image,
+    useColorScheme,
 } from 'react-native';
 import { useLocalSearchParams, useNavigation, useFocusEffect } from 'expo-router';
-import { supabase } from '@/lib/supabase';
-import { Session } from '@supabase/supabase-js';
-import { getThemeColors } from '@/theme/colors';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
+import { getThemeColors, Theme } from '@/theme/colors';
 import { useTranslation } from 'react-i18next';
 import { useUnreadChats } from '@/contexts/UnreadChatContext';
 
-const themeColors = getThemeColors('dark');
 const baseFontFamily = Platform.OS === 'ios' ? 'System' : 'Roboto';
 const PAGE_SIZE = 30;
 
-// --- Interfaces ---
+// === Types ===
 interface Profile {
     id: string;
     role: 'Arbeitnehmer' | 'Betrieb';
@@ -46,10 +46,10 @@ interface Profile {
     number_of_employees?: string;
     accommodation_offered?: boolean;
     machinery_brands?: string[];
-    experience?: string[] | null; // Can be null
+    experience?: string[] | null;
     age?: number | null;
     availability?: string | null;
-    driving_licenses?: string[] | null; // Can be null
+    driving_licenses?: string[] | null;
 }
 interface Message {
     id: string;
@@ -64,50 +64,40 @@ interface Participant {
     avatar_url: string | null;
 }
 
-// --- Helper Component ---
-const ProfileInfoRow = ({ icon, label, value }: { icon: any, label: string, value?: string | number | null }) => {
+// Small helper for rows in the profile modal
+const ProfileInfoRow = ({
+                            icon,
+                            label,
+                            value,
+                            colors,
+                        }: {
+    icon: any;
+    label: string;
+    value?: string | number | null;
+    colors: ReturnType<typeof getThemeColors>;
+}) => {
     if (!value) return null;
     return (
-        <View style={styles.profileInfoRow}>
-            <MaterialCommunityIcons name={icon} size={20} color={themeColors.textSecondary} style={styles.profileInfoIcon} />
+        <View style={stylesRow.row}>
+            <MaterialCommunityIcons name={icon} size={20} color={colors.textSecondary} style={stylesRow.icon} />
             <View>
-                <Text style={styles.profileInfoLabel}>{label}</Text>
-                <Text style={styles.profileInfoValue}>{value}</Text>
+                <Text style={[stylesRow.label, { color: colors.textSecondary }]}>{label}</Text>
+                <Text style={[stylesRow.value, { color: colors.text }]}>{value}</Text>
             </View>
         </View>
     );
 };
 
-const ChatHeader = ({ otherUser, firstMessageDate }: { otherUser: Participant | null; firstMessageDate: string | null }) => {
-    const { t } = useTranslation();
-    if (!otherUser || !firstMessageDate) {
-        return null;
-    }
-
-    return (
-        <View style={styles.chatHeaderContainer}>
-            {otherUser.avatar_url ? (
-                <Image source={{ uri: otherUser.avatar_url }} style={styles.chatHeaderAvatar} />
-            ) : (
-                <View style={styles.chatHeaderAvatarPlaceholder}>
-                    <MaterialCommunityIcons name="account" size={30} color={themeColors.textSecondary} />
-                </View>
-            )}
-            <Text style={styles.chatHeaderName}>{otherUser.full_name}</Text>
-            <Text style={styles.chatHeaderInfo}>
-                {t('chat.chatStarted')} {new Date(firstMessageDate).toLocaleDateString()}
-            </Text>
-        </View>
-    );
-};
-
-
 export default function ChatScreen() {
     const { t } = useTranslation();
     const { id: chatId } = useLocalSearchParams<{ id: string }>();
     const navigation = useNavigation();
-    const flatListRef = useRef<FlatList>(null);
+    const insets = useSafeAreaInsets();
+    const scheme = useColorScheme();
+    const colors = useMemo(() => getThemeColors((scheme || 'light') as Theme), [scheme]);
+
     const { markChatAsRead } = useUnreadChats();
+    const flatListRef = useRef<FlatList>(null);
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -123,9 +113,7 @@ export default function ChatScreen() {
 
     useFocusEffect(
         useCallback(() => {
-            if (chatId) {
-                markChatAsRead(chatId);
-            }
+            if (chatId) markChatAsRead(chatId);
         }, [chatId, markChatAsRead])
     );
 
@@ -143,28 +131,34 @@ export default function ChatScreen() {
         setIsProfileLoading(false);
     }, [otherUser, t]);
 
+    // Themed header title (no extra header inside list)
     useEffect(() => {
         navigation.setOptions({
+            headerStyle: { backgroundColor: colors.surface },
+            headerShadowVisible: true,
             headerTitle: () => (
-                <View style={styles.headerWrapper}>
-                    <TouchableOpacity onPress={handleViewProfile} disabled={!otherUser} style={styles.headerTouchable}>
+                <View style={titleStyles.wrapper}>
+                    <TouchableOpacity onPress={handleViewProfile} disabled={!otherUser} style={titleStyles.touchable}>
                         {otherUser?.avatar_url ? (
-                            <Image source={{ uri: otherUser.avatar_url }} style={styles.headerAvatar} />
+                            <Image source={{ uri: otherUser.avatar_url }} style={titleStyles.avatar} />
                         ) : (
-                            <View style={styles.headerAvatarPlaceholder}>
-                                <MaterialCommunityIcons name="account" size={20} color={themeColors.textSecondary} />
+                            <View style={[titleStyles.avatar, { backgroundColor: colors.surfaceHighlight, justifyContent: 'center', alignItems: 'center' }]}>
+                                <MaterialCommunityIcons name="account" size={20} color={colors.textSecondary} />
                             </View>
                         )}
-                        <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitleText}>{otherUser?.full_name || t('chat.titleFallback')}</Text>
-                            <MaterialCommunityIcons name="chevron-down" size={22} color={themeColors.text} style={styles.headerTitleIcon} />
+                        <View style={titleStyles.titleRow}>
+                            <Text style={[titleStyles.titleText, { color: colors.text }]}>
+                                {otherUser?.full_name || t('chat.titleFallback')}
+                            </Text>
+                            <MaterialCommunityIcons name="chevron-down" size={20} color={colors.text} style={{ marginLeft: 4 }} />
                         </View>
                     </TouchableOpacity>
                 </View>
-            )
+            ),
         });
-    }, [navigation, otherUser, handleViewProfile, t]);
+    }, [navigation, otherUser, handleViewProfile, t, colors]);
 
+    // Initial load
     useEffect(() => {
         const fetchData = async () => {
             if (!chatId) return;
@@ -172,16 +166,16 @@ export default function ChatScreen() {
             setHasMoreMessages(true);
             try {
                 const { data: { session: currentSession } } = await supabase.auth.getSession();
-                if (!currentSession) throw new Error("No active session");
+                if (!currentSession) throw new Error('No active session');
                 setSession(currentSession);
 
-                const { data: participantsData, error: participantsError } = await supabase.rpc('get_chat_participants', { chat_id_input: chatId });
+                const { data: participantsData, error: participantsError } = await supabase.rpc('get_chat_participants', {
+                    chat_id_input: chatId,
+                });
                 if (participantsError) throw participantsError;
                 const participants = participantsData as Participant[];
-                if (participants) {
-                    const otherParticipant = participants.find(p => p.user_id !== currentSession.user.id);
-                    if (otherParticipant) setOtherUser(otherParticipant);
-                }
+                const other = participants?.find((p) => p.user_id !== currentSession.user.id);
+                if (other) setOtherUser(other);
 
                 const { data: messagesData, error: messagesError } = await supabase
                     .from('messages')
@@ -191,14 +185,10 @@ export default function ChatScreen() {
                     .range(0, PAGE_SIZE - 1);
 
                 if (messagesError) throw messagesError;
-                if (messagesData) {
-                    setMessages(messagesData);
-                    if (messagesData.length < PAGE_SIZE) {
-                        setHasMoreMessages(false);
-                    }
-                }
-            } catch (error) {
-                console.error("Error fetching chat data:", error);
+                setMessages(messagesData || []);
+                if (!messagesData || messagesData.length < PAGE_SIZE) setHasMoreMessages(false);
+            } catch (e) {
+                console.error('Error fetching chat data:', e);
                 Alert.alert(t('common.error'), t('chat.loadingChatError'));
             } finally {
                 setLoading(false);
@@ -207,73 +197,96 @@ export default function ChatScreen() {
         fetchData();
     }, [chatId, t]);
 
+    // Realtime messages
     useEffect(() => {
         if (!chatId || !session?.user?.id) return;
-        const messageChannel = supabase.channel(`chat_${chatId}`).on<Message>('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` }, payload => {
-            setMessages(currentMessages => [payload.new, ...currentMessages]);
-        }).subscribe();
-        return () => { supabase.removeChannel(messageChannel); };
+
+        const channel = supabase
+            .channel(`chat_${chatId}`)
+            .on<Message>(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+                (payload) => setMessages((cur) => [payload.new, ...cur])
+            )
+            .subscribe();
+
+        return () => {
+            void supabase.removeChannel(channel);
+        };
     }, [chatId, session]);
 
+    // Live header updates when profile changes
     useEffect(() => {
         if (!otherUser?.user_id) return;
+
         const profileChannel = supabase
             .channel(`profile_update_${otherUser.user_id}`)
-            .on<Profile>('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${otherUser.user_id}` },
+            .on<Profile>(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${otherUser.user_id}` },
                 (payload) => {
-                    const newName = payload.new.username || payload.new.full_name || t('chatList.unknownUser');
-                    const newAvatar = payload.new.avatar_url || null;
-                    setOtherUser(currentUser => ({ ...currentUser!, full_name: newName, avatar_url: newAvatar }));
+                    const name = payload.new.username || payload.new.full_name || t('chatList.unknownUser');
+                    const avatar = payload.new.avatar_url || null;
+                    setOtherUser((cur) => (cur ? { ...cur, full_name: name, avatar_url: avatar } : cur));
                 }
             )
             .subscribe();
+
         return () => {
-            supabase.removeChannel(profileChannel);
+            void supabase.removeChannel(profileChannel);
         };
-    }, [otherUser, t]);
+    }, [otherUser?.user_id]);
 
     const loadMoreMessages = async () => {
         if (loadingMore || !hasMoreMessages || !chatId) return;
         setLoadingMore(true);
-        const currentMessageCount = messages.length;
-        const { data: newMessagesData, error } = await supabase
+        const start = messages.length;
+        const { data, error } = await supabase
             .from('messages')
             .select('*')
             .eq('chat_id', chatId)
             .order('created_at', { ascending: false })
-            .range(currentMessageCount, currentMessageCount + PAGE_SIZE - 1);
-        if (error) {
-            console.error('Error fetching more messages:', error);
-        } else if (newMessagesData) {
-            if (newMessagesData.length < PAGE_SIZE) {
-                setHasMoreMessages(false);
-            }
-            setMessages(prevMessages => [...prevMessages, ...newMessagesData]);
+            .range(start, start + PAGE_SIZE - 1);
+        if (!error && data) {
+            if (data.length < PAGE_SIZE) setHasMoreMessages(false);
+            setMessages((prev) => [...prev, ...data]);
         }
         setLoadingMore(false);
     };
 
     const handleSend = async () => {
-        const messageContent = newMessage.trim();
-        if (!messageContent || !session?.user || !chatId) return;
+        const content = newMessage.trim();
+        if (!content || !session?.user || !chatId) return;
         setNewMessage('');
-        const { error } = await supabase.from('messages').insert({ chat_id: chatId, sender_id: session.user.id, content: messageContent });
+        const { error } = await supabase.from('messages').insert({
+            chat_id: chatId,
+            sender_id: session.user.id,
+            content,
+        });
         if (error) {
             console.error('Error sending message:', error);
-            setNewMessage(messageContent);
+            setNewMessage(content);
             Alert.alert(t('common.error'), t('chat.sendMessageError'));
         }
     };
 
-    const renderMessageBubble = ({ item }: { item: Message }) => {
-        const isCurrentUser = item.sender_id === session?.user?.id;
+    const renderMessage = ({ item }: { item: Message }) => {
+        const mine = item.sender_id === session?.user?.id;
         return (
-            <View style={[styles.messageRow, isCurrentUser ? styles.myMessageRow : styles.theirMessageRow]}>
+            <View style={[bubble.row, mine ? bubble.rowMine : bubble.rowTheirs]}>
                 <View>
-                    <View style={[styles.messageBubble, isCurrentUser ? styles.myMessageBubble : styles.theirMessageBubble]}>
-                        <Text style={isCurrentUser ? styles.myMessageText : styles.theirMessageText}>{item.content}</Text>
+                    <View
+                        style={[
+                            bubble.bubble,
+                            mine
+                                ? { backgroundColor: colors.primary, borderBottomRightRadius: 6 }
+                                : { backgroundColor: colors.surfaceHighlight, borderBottomLeftRadius: 6 },
+                            stylesShadow.shadow(colors),
+                        ]}
+                    >
+                        <Text style={[bubble.text, { color: mine ? colors.background : colors.text }]}>{item.content}</Text>
                     </View>
-                    <Text style={[styles.messageTimestamp, isCurrentUser ? { textAlign: 'right' } : { textAlign: 'left' }]}>
+                    <Text style={[bubble.time, { color: colors.textSecondary, textAlign: mine ? 'right' : 'left' }]}>
                         {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                 </View>
@@ -282,58 +295,98 @@ export default function ChatScreen() {
     };
 
     if (loading) {
-        return <View style={styles.centeredContainer}><ActivityIndicator size="large" color={themeColors.primary} /></View>;
+        return (
+            <View style={[screen.centered, { backgroundColor: colors.background }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+        );
     }
 
-    const firstMessageDate = messages.length > 0 ? messages[messages.length - 1].created_at : null;
-
     return (
-        <SafeAreaView style={styles.container} edges={['bottom']}>
+        // IMPORTANT: do NOT include 'bottom' in edges, so there is no extra safe-area padding under the composer
+        <SafeAreaView style={[screen.container, { backgroundColor: colors.background }]} edges={['left', 'right', 'top']}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={styles.keyboardAvoidingContainer}
+                style={screen.flex}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
-                {!hasMoreMessages && <ChatHeader otherUser={otherUser} firstMessageDate={firstMessageDate} />}
-
                 <FlatList
                     ref={flatListRef}
                     data={messages}
-                    renderItem={renderMessageBubble}
+                    renderItem={renderMessage}
                     keyExtractor={(item) => item.id}
-                    style={styles.messageList}
-                    contentContainerStyle={{ paddingTop: 10, paddingBottom: 5 }}
+                    style={screen.list}
+                    // No paddingBottom here -> messages go right up to the composer
+                    contentContainerStyle={{ paddingTop: 6 }}
                     onEndReached={loadMoreMessages}
                     onEndReachedThreshold={0.8}
                     inverted
                     ListFooterComponent={
-                        loadingMore ? <ActivityIndicator style={{ marginVertical: 10 }} size="small" color={themeColors.primary} /> : null
+                        loadingMore ? <ActivityIndicator style={{ marginVertical: 10 }} size="small" color={colors.primary} /> : null
                     }
                 />
-                <View style={styles.inputContainer}>
-                    <TextInput style={styles.textInput} value={newMessage} onChangeText={setNewMessage} placeholder={t('chat.inputPlaceholder')} placeholderTextColor={themeColors.textHint} multiline />
-                    <TouchableOpacity style={styles.sendButton} onPress={handleSend} disabled={!newMessage.trim()}>
-                        <MaterialCommunityIcons name="send" size={24} color={themeColors.background} />
-                    </TouchableOpacity>
+
+                {/* Composer */}
+                <View
+                    style={[
+                        composer.container,
+                        {
+                            backgroundColor: colors.surface,
+                            borderTopColor: colors.border,
+                            // minimal bottom inset to sit just above the tab bar / home indicator
+                            paddingBottom: Math.max(insets.bottom - 2, 0),
+                        },
+                        stylesShadow.top(colors),
+                    ]}
+                >
+                    <View style={[composer.inputWrapper, { backgroundColor: colors.surfaceHighlight, borderColor: colors.border }]}>
+                        <TextInput
+                            style={[composer.input, { color: colors.text }]}
+                            value={newMessage}
+                            onChangeText={setNewMessage}
+                            placeholder={t('chat.inputPlaceholder')}
+                            placeholderTextColor={colors.textHint}
+                            multiline
+                        />
+                        <TouchableOpacity
+                            style={[
+                                composer.send,
+                                { backgroundColor: newMessage.trim() ? colors.primary : colors.surfaceHighlight },
+                            ]}
+                            onPress={handleSend}
+                            disabled={!newMessage.trim()}
+                            activeOpacity={0.85}
+                        >
+                            <MaterialCommunityIcons
+                                name="send"
+                                size={22}
+                                color={newMessage.trim() ? colors.background : colors.textSecondary}
+                            />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </KeyboardAvoidingView>
 
-            <Modal animationType="slide" transparent={true} visible={isProfileModalVisible} onRequestClose={() => setProfileModalVisible(false)}>
-                <View style={styles.modalCenteredView}>
-                    <View style={styles.modalView}>
-                        {isProfileLoading ? <ActivityIndicator size="large" color={themeColors.primary} /> : selectedProfile ? (
+            {/* Profile Modal */}
+            <Modal animationType="slide" transparent visible={isProfileModalVisible} onRequestClose={() => setProfileModalVisible(false)}>
+                <View style={modal.backdrop}>
+                    <View style={[modal.card, { backgroundColor: colors.surface }]}>
+                        {isProfileLoading ? (
+                            <ActivityIndicator size="large" color={colors.primary} />
+                        ) : selectedProfile ? (
                             <>
                                 <ScrollView showsVerticalScrollIndicator={false}>
-                                    <View style={styles.modalAvatarContainer}>
+                                    <View style={modal.avatarWrap}>
                                         {selectedProfile.avatar_url ? (
-                                            <Image source={{ uri: selectedProfile.avatar_url }} style={styles.modalAvatar} />
+                                            <Image source={{ uri: selectedProfile.avatar_url }} style={modal.avatar} />
                                         ) : (
-                                            <View style={styles.modalAvatarPlaceholder}>
-                                                <MaterialCommunityIcons name="account" size={40} color={themeColors.textSecondary} />
+                                            <View style={[modal.avatar, { backgroundColor: colors.surfaceHighlight, justifyContent: 'center', alignItems: 'center' }]}>
+                                                <MaterialCommunityIcons name="account" size={40} color={colors.textSecondary} />
                                             </View>
                                         )}
                                     </View>
-                                    <Text style={styles.profileName}>
+
+                                    <Text style={[modal.name, { color: colors.text }]}>
                                         {selectedProfile.role === 'Betrieb'
                                             ? selectedProfile.full_name
                                             : selectedProfile.username || selectedProfile.full_name}
@@ -341,49 +394,57 @@ export default function ChatScreen() {
 
                                     {selectedProfile.role === 'Betrieb' ? (
                                         <>
-                                            {selectedProfile.farm_description && (<><Text style={styles.profileSectionTitle}>{t('jobList.profile.about')}</Text><Text style={styles.profileDescription}>{selectedProfile.farm_description}</Text></>)}
-                                            <Text style={styles.profileSectionTitle}>{t('jobList.profile.details')}</Text>
-                                            <ProfileInfoRow icon="pine-tree" label={t('jobList.profile.farmSize')} value={selectedProfile.farm_size_hectares ? `${selectedProfile.farm_size_hectares} ha` : null} />
-                                            <ProfileInfoRow icon="account-group-outline" label={t('jobList.profile.employees')} value={selectedProfile.number_of_employees} />
-                                            <ProfileInfoRow icon="sprout-outline" label={t('jobList.profile.specializations')} value={selectedProfile.farm_specialization?.join(', ')} />
-                                            <ProfileInfoRow icon="tractor" label={t('jobList.profile.machinery')} value={selectedProfile.machinery_brands?.join(', ')} />
-                                            <ProfileInfoRow icon="home-city-outline" label={t('jobList.profile.accommodation')} value={selectedProfile.accommodation_offered ? t('jobList.profile.yes') : t('jobList.profile.no')} />
+                                            {selectedProfile.farm_description ? (
+                                                <>
+                                                    <Text style={[modal.sectionTitle, { color: colors.textSecondary }]}>{t('jobList.profile.about')}</Text>
+                                                    <Text style={[modal.paragraph, { color: colors.text }]}>{selectedProfile.farm_description}</Text>
+                                                </>
+                                            ) : null}
+
+                                            <Text style={[modal.sectionTitle, { color: colors.textSecondary }]}>{t('jobList.profile.details')}</Text>
+                                            <ProfileInfoRow icon="pine-tree" label={t('jobList.profile.farmSize')} value={selectedProfile.farm_size_hectares ? `${selectedProfile.farm_size_hectares} ha` : null} colors={colors} />
+                                            <ProfileInfoRow icon="account-group-outline" label={t('jobList.profile.employees')} value={selectedProfile.number_of_employees} colors={colors} />
+                                            <ProfileInfoRow icon="sprout-outline" label={t('jobList.profile.specializations')} value={selectedProfile.farm_specialization?.join(', ')} colors={colors} />
+                                            <ProfileInfoRow icon="tractor" label={t('jobList.profile.machinery')} value={selectedProfile.machinery_brands?.join(', ')} colors={colors} />
+                                            <ProfileInfoRow icon="home-city-outline" label={t('jobList.profile.accommodation')} value={selectedProfile.accommodation_offered ? t('jobList.profile.yes') : t('jobList.profile.no')} colors={colors} />
                                         </>
                                     ) : (
                                         <>
-                                            <Text style={styles.profileSectionTitle}>{t('profile.personalDetails')}</Text>
-                                            <ProfileInfoRow icon="cake-variant-outline" label={t('profile.age')} value={selectedProfile.age} />
-                                            <ProfileInfoRow icon="calendar-clock-outline" label={t('profile.availability')} value={selectedProfile.availability} />
-                                            <Text style={styles.profileSectionTitle}>{t('profile.drivingLicenses')}</Text>
+                                            <Text style={[modal.sectionTitle, { color: colors.textSecondary }]}>{t('profile.personalDetails')}</Text>
+                                            <ProfileInfoRow icon="cake-variant-outline" label={t('profile.age')} value={selectedProfile.age} colors={colors} />
+                                            <ProfileInfoRow icon="calendar-clock-outline" label={t('profile.availability')} value={selectedProfile.availability} colors={colors} />
 
-                                            {/* --- THIS IS THE FIX --- */}
+                                            <Text style={[modal.sectionTitle, { color: colors.textSecondary }]}>{t('profile.drivingLicenses')}</Text>
                                             {(selectedProfile.driving_licenses || []).length > 0 ? (
-                                                <View style={styles.chipsContainer}>
-                                                    {selectedProfile.driving_licenses!.map(license => (
-                                                        <View key={license} style={styles.chip}>
-                                                            <Text style={styles.chipText}>{license}</Text>
+                                                <View style={chips.wrap}>
+                                                    {selectedProfile.driving_licenses!.map((lic) => (
+                                                        <View key={lic} style={[chips.item, { backgroundColor: colors.surfaceHighlight }]}>
+                                                            <Text style={[chips.text, { color: colors.text }]}>{lic}</Text>
                                                         </View>
                                                     ))}
                                                 </View>
-                                            ) : <Text style={styles.profileInfoValue}>{t('chat.noLicenses')}</Text>}
+                                            ) : (
+                                                <Text style={[modal.paragraph, { color: colors.textSecondary }]}>{t('chat.noLicenses')}</Text>
+                                            )}
 
-                                            <Text style={styles.profileSectionTitle}>{t('profile.myExperience')}</Text>
-
-                                            {/* --- THIS IS THE FIX --- */}
+                                            <Text style={[modal.sectionTitle, { color: colors.textSecondary }]}>{t('profile.myExperience')}</Text>
                                             {(selectedProfile.experience || []).length > 0 ? (
-                                                <View style={styles.chipsContainer}>
-                                                    {selectedProfile.experience!.map(item => (
-                                                        <View key={item} style={styles.chip}>
-                                                            <Text style={styles.chipText}>{t(`experiences.${item}`)}</Text>
+                                                <View style={chips.wrap}>
+                                                    {selectedProfile.experience!.map((key) => (
+                                                        <View key={key} style={[chips.item, { backgroundColor: colors.surfaceHighlight }]}>
+                                                            <Text style={[chips.text, { color: colors.text }]}>{t(`experiences.${key}`)}</Text>
                                                         </View>
                                                     ))}
                                                 </View>
-                                            ) : <Text style={styles.profileInfoValue}>{t('chat.noExperience')}</Text>}
+                                            ) : (
+                                                <Text style={[modal.paragraph, { color: colors.textSecondary }]}>{t('chat.noExperience')}</Text>
+                                            )}
                                         </>
                                     )}
                                 </ScrollView>
-                                <TouchableOpacity style={styles.modalCloseButton} onPress={() => setProfileModalVisible(false)}>
-                                    <Text style={styles.modalCloseButtonText}>{t('jobList.profile.done')}</Text>
+
+                                <TouchableOpacity style={[modal.closeBtn, { backgroundColor: colors.primary }]} onPress={() => setProfileModalVisible(false)}>
+                                    <Text style={[modal.closeText, { color: colors.background }]}>{t('jobList.profile.done')}</Text>
                                 </TouchableOpacity>
                             </>
                         ) : null}
@@ -394,232 +455,107 @@ export default function ChatScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+/* ====== styles ====== */
+const screen = StyleSheet.create({
+    container: { flex: 1 },
+    flex: { flex: 1 },
+    list: { flex: 1, paddingHorizontal: 10 },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+});
+
+const bubble = StyleSheet.create({
+    row: { flexDirection: 'row', marginVertical: 3 },
+    rowMine: { justifyContent: 'flex-end', marginLeft: '18%' },
+    rowTheirs: { justifyContent: 'flex-start', marginRight: '18%' },
+    bubble: { borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14, maxWidth: '100%' },
+    text: { fontSize: 16, fontFamily: baseFontFamily },
+    time: { fontSize: 10, marginTop: 4, marginHorizontal: 8 },
+});
+
+const composer = StyleSheet.create({
     container: {
-        flex: 1,
-        backgroundColor: themeColors.background,
-    },
-    centeredContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: themeColors.background,
-    },
-    keyboardAvoidingContainer: {
-        flex: 1,
-    },
-    messageList: {
-        flex: 1,
-        paddingHorizontal: 10,
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 10,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        paddingHorizontal: 12,
         paddingTop: 10,
-        paddingBottom: 10,
-        borderTopWidth: 1,
-        borderTopColor: themeColors.border,
-        backgroundColor: themeColors.background,
     },
-    textInput: {
-        flex: 1,
-        backgroundColor: themeColors.surfaceHighlight,
-        borderRadius: 20,
-        paddingVertical: 10,
-        paddingHorizontal: 15,
-        color: themeColors.text,
-        fontSize: 16,
-        marginRight: 10,
-        maxHeight: 100,
-    },
-    sendButton: {
-        backgroundColor: themeColors.primary,
-        borderRadius: 25,
-        width: 50,
-        height: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    messageRow: {
+    inputWrapper: {
         flexDirection: 'row',
-        marginVertical: 2,
-    },
-    myMessageRow: {
-        justifyContent: 'flex-end',
-        marginLeft: '20%',
-    },
-    theirMessageRow: {
-        justifyContent: 'flex-start',
-        marginRight: '20%',
-    },
-    messageBubble: {
-        borderRadius: 20,
-        paddingVertical: 10,
-        paddingHorizontal: 15,
-        maxWidth: '100%',
-    },
-    myMessageBubble: {
-        backgroundColor: themeColors.primary,
-        borderBottomRightRadius: 5,
-    },
-    theirMessageBubble: {
-        backgroundColor: themeColors.surfaceHighlight,
-        borderBottomLeftRadius: 5,
-    },
-    myMessageText: {
-        color: themeColors.background,
-        fontSize: 16,
-    },
-    theirMessageText: {
-        color: themeColors.text,
-        fontSize: 16,
-    },
-    messageTimestamp: {
-        fontSize: 10,
-        color: themeColors.textSecondary,
-        marginTop: 4,
-        marginHorizontal: 8,
-    },
-    headerWrapper: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerTouchable: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    headerTitleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    headerTitleText: {
-        color: themeColors.text,
-        fontSize: 17,
-        fontWeight: '600',
-    },
-    headerTitleIcon: {
-        marginLeft: 4,
-    },
-    headerAvatar: {
-        width: 32,
-        height: 32,
+        alignItems: 'flex-end',
         borderRadius: 16,
-        marginRight: 10,
-        backgroundColor: themeColors.surfaceHighlight,
+        borderWidth: StyleSheet.hairlineWidth,
+        paddingHorizontal: 12,
+        paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     },
-    headerAvatarPlaceholder: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        marginRight: 10,
-        backgroundColor: themeColors.surfaceHighlight,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalCenteredView: {
+    input: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        fontSize: 16,
+        fontFamily: baseFontFamily,
+        paddingRight: 8,
+        maxHeight: 120,
     },
-    modalView: {
+    send: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
+    },
+});
+
+const titleStyles = StyleSheet.create({
+    wrapper: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    touchable: { flexDirection: 'row', alignItems: 'center' },
+    titleRow: { flexDirection: 'row', alignItems: 'center' },
+    titleText: { fontSize: 16, fontWeight: '600', fontFamily: baseFontFamily },
+    avatar: { width: 28, height: 28, borderRadius: 14, marginRight: 8 },
+});
+
+const stylesRow = StyleSheet.create({
+    row: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
+    icon: { marginRight: 12, marginTop: 2 },
+    label: { fontSize: 12, marginBottom: 2, fontFamily: baseFontFamily },
+    value: { fontSize: 16, flexShrink: 1, fontFamily: baseFontFamily },
+});
+
+const chips = StyleSheet.create({
+    wrap: { flexDirection: 'row', flexWrap: 'wrap' },
+    item: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 18, marginRight: 10, marginBottom: 10 },
+    text: { fontSize: 14, fontFamily: baseFontFamily },
+});
+
+const modal = StyleSheet.create({
+    backdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
+    card: {
         width: '90%',
-        maxHeight: '70%',
-        backgroundColor: themeColors.surface,
+        maxHeight: '72%',
         borderRadius: 20,
-        padding: 25,
+        padding: 22,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
+        shadowRadius: 6,
+        elevation: 6,
     },
-    modalAvatarContainer: {
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    modalAvatar: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: themeColors.surfaceHighlight,
-    },
-    modalAvatarPlaceholder: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: themeColors.surfaceHighlight,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    profileName: { fontFamily: baseFontFamily, fontSize: 24, fontWeight: 'bold', color: themeColors.text, textAlign: 'center', marginBottom: 20 },
-    profileSectionTitle: { fontFamily: baseFontFamily, fontSize: 14, fontWeight: 'bold', color: themeColors.textSecondary, marginTop: 15, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-    profileDescription: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.text, lineHeight: 24 },
-    profileInfoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 },
-    profileInfoIcon: { marginRight: 15, marginTop: 2 },
-    profileInfoLabel: { fontFamily: baseFontFamily, fontSize: 12, color: themeColors.textSecondary, marginBottom: 2 },
-    profileInfoValue: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.text, flexShrink: 1 },
-    modalCloseButton: {
-        backgroundColor: themeColors.primary,
-        borderRadius: 10,
-        padding: 12,
-        elevation: 2,
-        marginTop: 20,
-    },
-    modalCloseButtonText: {
-        color: themeColors.background,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        fontSize: 16,
-    },
-    chipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    chip: {
-        backgroundColor: themeColors.surfaceHighlight,
-        paddingVertical: 8,
-        paddingHorizontal: 15,
-        borderRadius: 20,
-        marginRight: 10,
-        marginBottom: 10,
-    },
-    chipText: {
-        color: themeColors.text,
-        fontSize: 14,
-    },
-    chatHeaderContainer: {
-        alignItems: 'center',
-        paddingVertical: 24,
-        borderBottomWidth: 1,
-        borderBottomColor: themeColors.border,
-        marginBottom: 10,
-    },
-    chatHeaderAvatar: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        marginBottom: 12,
-    },
-    chatHeaderAvatarPlaceholder: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: themeColors.surfaceHighlight,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    chatHeaderName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: themeColors.text,
-    },
-    chatHeaderInfo: {
-        fontSize: 13,
-        color: themeColors.textSecondary,
-        marginTop: 4,
-    },
+    avatarWrap: { alignItems: 'center', marginBottom: 12 },
+    avatar: { width: 84, height: 84, borderRadius: 42 },
+    name: { fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 16, fontFamily: baseFontFamily },
+    sectionTitle: { fontSize: 13, fontWeight: '700', marginTop: 14, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5, fontFamily: baseFontFamily },
+    paragraph: { fontSize: 16, lineHeight: 24, fontFamily: baseFontFamily },
+    closeBtn: { borderRadius: 12, paddingVertical: 12, marginTop: 16 },
+    closeText: { textAlign: 'center', fontWeight: '700', fontSize: 16, fontFamily: baseFontFamily },
 });
+
+// subtle elevation helpers
+const stylesShadow = {
+    shadow: (c: ReturnType<typeof getThemeColors>) =>
+        Platform.select({
+            ios: { shadowColor: c.border, shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+            android: { elevation: 2 },
+        }) as any,
+    top: (c: ReturnType<typeof getThemeColors>) =>
+        Platform.select({
+            ios: { shadowColor: c.border, shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: -2 } },
+            android: { elevation: 8 },
+        }) as any,
+};

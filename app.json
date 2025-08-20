@@ -4,7 +4,7 @@
     "slug": "agricrew",
     "scheme": "agricrew",
     "jsEngine": "hermes",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "splash": {
@@ -17,7 +17,9 @@
       "bundleIdentifier": "com.agri-crew.agri-crew",
       "buildNumber": "21",
       "entitlements": { "aps-environment": "production" },
+      "userInterfaceStyle": "automatic",
       "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": true,
         "NSPhotoLibraryUsageDescription": "AgriCrew needs access to your photo library to allow you to select and upload your profile picture and other relevant images.",
         "NSCameraUsageDescription": "AgriCrew needs camera access to take new photos for your profile, job listings, or chat.",
         "NSUserNotificationsUsageDescription": "AgriCrew would like to send you notifications for new job offers, application updates, and chat messages to keep you informed.",

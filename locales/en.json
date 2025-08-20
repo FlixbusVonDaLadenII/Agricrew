@@ -282,6 +282,7 @@
   },
   "profile": {
     "loadProfileError": "Failed to load profile: {{message}}",
+    "accommodation": "Accommodation",
     "farmSizePlaceholder": "e.g., 150",
     "employeeCountPlaceholder": "e.g., 6-20",
     "publicEmailPlaceholder": "info@myfarm.com",

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
     StyleSheet,
     View,
@@ -12,7 +12,8 @@ import {
     Switch,
     UIManager,
     LayoutAnimation,
-    Linking // Added Linking
+    Linking,
+    useColorScheme,
 } from 'react-native';
 import { getThemeColors, Theme } from '@/theme/colors';
 import { supabase } from '@/lib/supabase';
@@ -21,24 +22,19 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-
-// ===== Theme setup =====
-const currentTheme: Theme = 'dark';
-const themeColors = getThemeColors(currentTheme);
-const baseFontFamily = Platform.select({ ios: 'System', android: 'Roboto', default: 'System' });
-
 // ===== Types =====
 type Profile = { role: string } | null;
 type Subscription = { role: string | null } | null;
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-// ===== Subscription Plans (used for display only) =====
+// ===== Subscription Plans (display only) =====
 const subscriptionPlans = {
     employee: { id: 'employee_yearly', icon: 'account-hard-hat' as IconName },
     admin: { id: 'admin_monthly', icon: 'file-document-outline' as IconName },
@@ -50,28 +46,58 @@ const subscriptionPlans = {
     farm_l_yearly: { id: 'farm_l_yearly', icon: 'tractor-variant' as IconName },
 } as const;
 
-// ===== PlanCard Component =====
-const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, isActive, t }) => {
+const baseFontFamily = Platform.select({
+    ios: 'System',
+    android: 'Roboto',
+    default: 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
+});
+
+// ===== PlanCard Component (presentational) =====
+const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, isActive, t, themeColors }) => {
     const details = t(`subscribe.plans.${plan.id}`, { returnObjects: true });
     const displayPrice = details.price;
 
     return (
         <TouchableOpacity
-            style={[styles.planCard, isSelected && styles.selectedPlan, isActive && styles.activePlan]}
+            activeOpacity={0.9}
+            style={[
+                styles.planCard,
+                {
+                    backgroundColor: themeColors.surface,
+                    borderColor: isSelected || isActive ? themeColors.primary : themeColors.border,
+                    shadowColor: Platform.OS === 'ios' ? '#000' : themeColors.surface,
+                },
+                isActive && { backgroundColor: themeColors.primary + '12' },
+            ]}
             onPress={() => onSelect(plan.id)}
         >
-            {isActive && <View style={styles.activeBadge}><Text style={styles.activeBadgeText}>{t('manageSubscription.active')}</Text></View>}
-            <MaterialCommunityIcons name={plan.icon} size={32} color={isSelected || isActive ? themeColors.primary : themeColors.textSecondary} />
-            <Text style={styles.planTitle}>{details.title}</Text>
-            <View style={styles.priceContainer}>
-                <Text style={styles.price}>{displayPrice}</Text>
-                <Text style={styles.period}>{details.period}</Text>
+            {isActive && (
+                <View style={[styles.activeBadge, { backgroundColor: themeColors.primary }]}>
+                    <Text style={[styles.activeBadgeText, { color: themeColors.background }]}>
+                        {t('manageSubscription.active')}
+                    </Text>
+                </View>
+            )}
+
+            <View style={styles.cardHeader}>
+                <MaterialCommunityIcons
+                    name={plan.icon}
+                    size={32}
+                    color={isSelected || isActive ? themeColors.primary : themeColors.textSecondary}
+                />
+                <Text style={[styles.planTitle, { color: themeColors.text }]}>{details.title}</Text>
             </View>
+
+            <View style={styles.priceContainer}>
+                <Text style={[styles.price, { color: themeColors.text }]}>{displayPrice}</Text>
+                <Text style={[styles.period, { color: themeColors.textSecondary }]}>{details.period}</Text>
+            </View>
+
             <View style={styles.featuresContainer}>
                 {details.features.map((feature: string) => (
                     <View key={feature} style={styles.featureItem}>
                         <MaterialCommunityIcons name="check" size={16} color={themeColors.success} />
-                        <Text style={styles.featureText}>{feature}</Text>
+                        <Text style={[styles.featureText, { color: themeColors.text }]}>{feature}</Text>
                     </View>
                 ))}
             </View>
@@ -82,7 +108,13 @@ const PlanCard: React.FC<any> = ({ plan, onSelect, isSelected, isActive, t }) =>
 // ===== Main Screen =====
 export default function ManageSubscriptionScreen() {
     const { t } = useTranslation();
+    const insets = useSafeAreaInsets();
     const { session } = useSession();
+    const scheme = useColorScheme();
+    const themeColors = useMemo(
+        () => getThemeColors((scheme ?? 'light') as Theme),
+        [scheme]
+    );
 
     const [profile, setProfile] = useState<Profile>(null);
     const [subscription, setSubscription] = useState<Subscription>(null);
@@ -92,26 +124,28 @@ export default function ManageSubscriptionScreen() {
     const [isYearly, setIsYearly] = useState(false);
     const [isLegalNoticeVisible, setLegalNoticeVisible] = useState(false);
 
-
     useFocusEffect(
         useCallback(() => {
             const fetchInitialData = async () => {
                 if (session?.user) {
                     setLoading(true);
                     try {
-                        const { data: profileData } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+                        const { data: profileData } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', session.user.id)
+                            .single();
                         setProfile(profileData);
 
                         const { data: subData } = await supabase
                             .from('user_subscriptions')
-                            .select('role') // Fetch 'role' which stores the plan_id
+                            .select('role')
                             .eq('user_id', session.user.id)
-                            .eq('is_active', true) // Check 'is_active' column
+                            .eq('is_active', true)
                             .single();
 
                         setSubscription(subData);
                         setSelectedPlanId(subData?.role || null);
-
                     } catch (e) {
                         Alert.alert(t('manageSubscription.errorTitle'), t('manageSubscription.loadDataError'));
                     } finally {
@@ -129,22 +163,18 @@ export default function ManageSubscriptionScreen() {
 
         try {
             if (subscription) {
-                // Update existing subscription
                 const { error } = await supabase
                     .from('user_subscriptions')
                     .update({ role: selectedPlanId })
                     .eq('user_id', session.user.id)
                     .eq('is_active', true);
-
                 if (error) throw error;
             } else {
-                // Create new subscription
                 const { error } = await supabase.from('user_subscriptions').insert({
                     user_id: session.user.id,
                     role: selectedPlanId,
                     is_active: true,
                 });
-
                 if (error) throw error;
             }
 
@@ -158,37 +188,50 @@ export default function ManageSubscriptionScreen() {
         }
     };
 
-
-
     const renderPlans = () => {
         if (loading) {
             return <ActivityIndicator size="large" color={themeColors.primary} style={{ marginTop: 40 }} />;
         }
         if (!profile) {
-            return <Text style={styles.subtitle}>{t('subscribe.profileError')}</Text>;
+            return <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>{t('subscribe.profileError')}</Text>;
         }
 
         switch (profile.role) {
             case 'Arbeitnehmer':
-            case 'Rechnungsschreiber':
+            case 'Rechnungsschreiber': {
                 const planKey = profile.role === 'Arbeitnehmer' ? 'employee' : 'admin';
                 const plan = subscriptionPlans[planKey];
-                return <PlanCard plan={plan} onSelect={() => {}} isSelected={false} isActive={true} t={t} />;
-            case 'Betrieb':
+                return (
+                    <PlanCard
+                        plan={plan}
+                        onSelect={() => {}}
+                        isSelected={false}
+                        isActive={true}
+                        t={t}
+                        themeColors={themeColors}
+                    />
+                );
+            }
+            case 'Betrieb': {
                 const farmPlans = isYearly
                     ? [subscriptionPlans.farm_s_yearly, subscriptionPlans.farm_m_yearly, subscriptionPlans.farm_l_yearly]
                     : [subscriptionPlans.farm_s, subscriptionPlans.farm_m, subscriptionPlans.farm_l];
                 return (
                     <>
-                        <View style={styles.toggleContainer}>
-                            <Text style={styles.toggleLabel}>{t('subscribe.monthly')}</Text>
+                        <View
+                            style={[
+                                styles.toggleContainer,
+                                { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+                            ]}
+                        >
+                            <Text style={[styles.toggleLabel, { color: themeColors.text }]}>{t('subscribe.monthly')}</Text>
                             <Switch
                                 value={isYearly}
                                 onValueChange={setIsYearly}
-                                trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary }}
+                                trackColor={{ false: themeColors.surfaceHighlight, true: themeColors.primary + '80' }}
                                 thumbColor={themeColors.background}
                             />
-                            <Text style={styles.toggleLabel}>{t('subscribe.yearly')}</Text>
+                            <Text style={[styles.toggleLabel, { color: themeColors.text }]}>{t('subscribe.yearly')}</Text>
                         </View>
                         {farmPlans.map((plan) => (
                             <PlanCard
@@ -198,38 +241,66 @@ export default function ManageSubscriptionScreen() {
                                 isSelected={selectedPlanId === plan.id}
                                 isActive={subscription?.role === plan.id}
                                 t={t}
+                                themeColors={themeColors}
                             />
                         ))}
                     </>
                 );
+            }
             default:
-                return <Text style={styles.subtitle}>{t('subscribe.noPlans')}</Text>;
+                return <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>{t('subscribe.noPlans')}</Text>;
         }
     };
 
+    const disabledCTA = loading || isUpdating || !selectedPlanId || selectedPlanId === subscription?.role;
+
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <MaterialCommunityIcons name="credit-card-settings-outline" size={60} color={themeColors.primary} />
-                <Text style={styles.title}>{t('manageSubscription.title')}</Text>
-                <Text style={styles.subtitle}>{t('manageSubscription.subtitle')}</Text>
+        <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+            <ScrollView
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingBottom: 220, paddingTop: 24, paddingHorizontal: 16, width: '100%', maxWidth: 960, alignSelf: 'center' },
+                ]}
+            >
+                <MaterialCommunityIcons name="credit-card-settings-outline" size={56} color={themeColors.primary} />
+                <Text style={[styles.title, { color: themeColors.text }]}>{t('manageSubscription.title')}</Text>
+                <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>{t('manageSubscription.subtitle')}</Text>
+
                 {renderPlans()}
             </ScrollView>
-            <View style={styles.footer}>
+
+            {/* Footer CTA + Legal */}
+            <View
+                style={[
+                    styles.footer,
+                    {
+                        backgroundColor: themeColors.surface,
+                        borderTopColor: themeColors.border,
+                        paddingBottom: Math.max(insets.bottom + 12, 20),
+                    },
+                ]}
+            >
                 <TouchableOpacity
                     style={[
                         styles.purchaseButton,
-                        (!selectedPlanId || isUpdating || selectedPlanId === subscription?.role) && styles.disabledButton,
+                        {
+                            backgroundColor: disabledCTA ? themeColors.surfaceHighlight : themeColors.primary,
+                            shadowColor: themeColors.primary,
+                        },
                     ]}
                     onPress={handleUpdatePlan}
-                    disabled={loading || isUpdating || !selectedPlanId || selectedPlanId === subscription?.role}
+                    disabled={disabledCTA}
+                    activeOpacity={0.9}
                 >
                     {isUpdating ? (
-                        <ActivityIndicator color="#fff" />
+                        <ActivityIndicator color={themeColors.background} />
                     ) : (
-                        <Text style={styles.buttonText}>{t('manageSubscription.changePlan')}</Text>
+                        <Text style={[styles.buttonText, { color: themeColors.background }]}>
+                            {t('manageSubscription.changePlan')}
+                        </Text>
                     )}
                 </TouchableOpacity>
+
                 <View style={styles.legalContainer}>
                     <TouchableOpacity
                         style={styles.collapsibleHeader}
@@ -237,28 +308,33 @@ export default function ManageSubscriptionScreen() {
                             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                             setLegalNoticeVisible(!isLegalNoticeVisible);
                         }}
-                        activeOpacity={0.7}
+                        activeOpacity={0.75}
                     >
-                        <Text style={styles.collapsibleHeaderText}>
+                        <Text style={[styles.collapsibleHeaderText, { color: themeColors.textSecondary }]}>
                             {t('manageSubscription.legalHeader')}
                         </Text>
                         <MaterialCommunityIcons
                             name={isLegalNoticeVisible ? 'chevron-up' : 'chevron-down'}
-                            size={24}
+                            size={22}
                             color={themeColors.textSecondary}
                         />
                     </TouchableOpacity>
+
                     {isLegalNoticeVisible && (
                         <View style={styles.legalContent}>
-                            <Text style={styles.legalText}>
+                            <Text style={[styles.legalText, { color: themeColors.textSecondary }]}>
                                 {t('manageSubscription.legalNotice')}
                             </Text>
                             <View style={styles.legalLinksContainer}>
                                 <TouchableOpacity onPress={() => Linking.openURL('https://agri-crew.de/agb')}>
-                                    <Text style={styles.legalLink}>{t('manageSubscription.terms', 'Terms & Conditions')}</Text>
+                                    <Text style={[styles.legalLink, { color: themeColors.primary }]}>
+                                        {t('manageSubscription.terms', 'Terms & Conditions')}
+                                    </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity onPress={() => Linking.openURL('https://agri-crew.de/app-datenschutz')}>
-                                    <Text style={styles.legalLink}>{t('manageSubscription.privacy', 'Privacy Policy')}</Text>
+                                    <Text style={[styles.legalLink, { color: themeColors.primary }]}>
+                                        {t('manageSubscription.privacy', 'Privacy Policy')}
+                                    </Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -271,31 +347,147 @@ export default function ManageSubscriptionScreen() {
 
 // ===== Styles =====
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: themeColors.background },
-    scrollContent: { alignItems: 'center', padding: 24, paddingBottom: 220 }, // Increased paddingBottom
-    title: { fontFamily: baseFontFamily, fontSize: 28, fontWeight: 'bold', color: themeColors.text, marginVertical: 16, textAlign: 'center' },
-    subtitle: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 32 },
-    planCard: { width: '100%', backgroundColor: themeColors.surface, borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 2, borderColor: themeColors.border, alignItems: 'center', overflow: 'hidden' },
-    selectedPlan: { borderColor: themeColors.primary },
-    activePlan: { borderColor: themeColors.primary, backgroundColor: themeColors.primary + '1A' },
-    planTitle: { fontFamily: baseFontFamily, fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginTop: 12 },
-    priceContainer: { flexDirection: 'row', alignItems: 'baseline', marginVertical: 8 },
-    price: { fontFamily: baseFontFamily, fontSize: 36, fontWeight: 'bold', color: themeColors.text },
-    period: { fontFamily: baseFontFamily, fontSize: 16, color: themeColors.textSecondary, marginLeft: 6 },
-    featuresContainer: { alignSelf: 'stretch', marginTop: 12, paddingLeft: 10 },
-    featureItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    featureText: { fontFamily: baseFontFamily, fontSize: 15, color: themeColors.text, marginLeft: 10 },
-    footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 24, paddingTop: 12, backgroundColor: themeColors.background, borderTopWidth: 1, borderTopColor: themeColors.border },
-    purchaseButton: { width: '100%', backgroundColor: themeColors.primary, padding: 18, borderRadius: 12, alignItems: 'center' },
-    disabledButton: { backgroundColor: themeColors.surfaceHighlight },
-    buttonText: { fontFamily: baseFontFamily, color: '#fff', fontSize: 18, fontWeight: 'bold' },
-    toggleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, backgroundColor: themeColors.surface, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 12 },
-    toggleLabel: { fontSize: 16, fontWeight: '600', color: themeColors.text, marginHorizontal: 8 },
-    activeBadge: { position: 'absolute', top: 15, right: 15, backgroundColor: themeColors.primary, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-    activeBadgeText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-    legalContainer: {
-        marginTop: 16,
+    container: { flex: 1 },
+
+    scrollContent: {
+        alignItems: 'center',
+        gap: 10,
     },
+
+    title: {
+        fontFamily: baseFontFamily,
+        fontSize: 28,
+        fontWeight: '700',
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    subtitle: {
+        fontFamily: baseFontFamily,
+        fontSize: 16,
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 24,
+    },
+
+    // Plan card
+    planCard: {
+        width: '100%',
+        borderRadius: 16,
+        padding: 18,
+        marginBottom: 16,
+        borderWidth: StyleSheet.hairlineWidth,
+        alignItems: 'flex-start',
+        overflow: 'hidden',
+        ...Platform.select({
+            ios: { shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
+            android: { elevation: 2 },
+            default: {},
+        }),
+    },
+    cardHeader: {
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    planTitle: {
+        fontFamily: baseFontFamily,
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    priceContainer: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        marginTop: 10,
+    },
+    price: {
+        fontFamily: baseFontFamily,
+        fontSize: 32,
+        fontWeight: '800',
+        letterSpacing: 0.2,
+    },
+    period: {
+        fontFamily: baseFontFamily,
+        fontSize: 14,
+        marginLeft: 6,
+    },
+    featuresContainer: {
+        alignSelf: 'stretch',
+        marginTop: 12,
+        paddingLeft: 2,
+    },
+    featureItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+        gap: 8,
+    },
+    featureText: {
+        fontFamily: baseFontFamily,
+        fontSize: 14,
+    },
+
+    activeBadge: {
+        position: 'absolute',
+        top: 14,
+        right: 14,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 999,
+    },
+    activeBadgeText: {
+        fontFamily: baseFontFamily,
+        fontWeight: '700',
+        fontSize: 12,
+        letterSpacing: 0.2,
+    },
+
+    // Toggle row
+    toggleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'stretch',
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 12,
+        borderWidth: StyleSheet.hairlineWidth,
+        marginBottom: 14,
+        gap: 10,
+    },
+    toggleLabel: {
+        fontFamily: baseFontFamily,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+
+    // Footer
+    footer: {
+        position: 'absolute',
+        bottom: 0, left: 0, right: 0,
+        paddingHorizontal: 16,
+        paddingTop: 10,
+        borderTopWidth: StyleSheet.hairlineWidth,
+    },
+    purchaseButton: {
+        width: '100%',
+        paddingVertical: 16,
+        borderRadius: 14,
+        alignItems: 'center',
+        ...Platform.select({
+            ios: { shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 6 } },
+            android: { elevation: 3 },
+            default: {},
+        }),
+    },
+    buttonText: {
+        fontFamily: baseFontFamily,
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: 0.2,
+    },
+
+    // Legal collapsible
+    legalContainer: { marginTop: 14 },
     collapsibleHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -304,28 +496,18 @@ const styles = StyleSheet.create({
     collapsibleHeaderText: {
         fontFamily: baseFontFamily,
         fontSize: 14,
-        color: themeColors.textSecondary,
-        fontWeight: '500',
+        fontWeight: '600',
     },
-    legalContent: {
-        marginTop: 12,
-    },
+    legalContent: { marginTop: 10 },
     legalText: {
         fontFamily: baseFontFamily,
         fontSize: 12,
-        color: themeColors.textSecondary,
-        textAlign: 'left',
         lineHeight: 18,
     },
-    legalLinksContainer: {
-        flexDirection: 'row',
-        marginTop: 12,
-        gap: 20,
-    },
+    legalLinksContainer: { flexDirection: 'row', marginTop: 10, gap: 20 },
     legalLink: {
         fontFamily: baseFontFamily,
         fontSize: 12,
-        color: themeColors.primary,
         textDecorationLine: 'underline',
     },
 });

@@ -17,6 +17,9 @@ interface ColorPalette {
     warning: string;
     danger: string;
     shadow: string;
+
+    // NEW
+    cardHighlight: string;
 }
 
 const lightColors: ColorPalette = {
@@ -26,16 +29,19 @@ const lightColors: ColorPalette = {
     text: '#2C3E50',
     textSecondary: '#7F8C8D',
     textHint: '#BDC3C7',
-    primary: '#4CAF50',         // Changed from blue to green
-    primaryLight: '#81C784',   // Changed to a lighter green
-    primaryDark: '#388E3C',      // Changed to a darker green
-    secondary: '#26A69A',      // Changed from blue to a teal/green
+    primary: '#4CAF50',
+    primaryLight: '#81C784',
+    primaryDark: '#388E3C',
+    secondary: '#26A69A',
     border: '#D5DBDB',
     separator: '#EBEBEB',
     success: '#28A745',
     warning: '#FFC107',
     danger: '#DC3545',
     shadow: 'rgba(0, 0, 0, 0.1)',
+
+    // soft green-tinted background for unread cards
+    cardHighlight: '#E9F7EF',
 };
 
 const darkColors: ColorPalette = {
@@ -45,16 +51,19 @@ const darkColors: ColorPalette = {
     text: '#F2F2F7',
     textSecondary: '#A9A9AE',
     textHint: '#6B6B6D',
-    primary: '#32D74B',         // Changed from blue to a vibrant green
-    primaryLight: '#5EE371',   // Changed to a lighter green
-    primaryDark: '#28A745',      // Changed to a darker green
-    secondary: '#FF453A',       // Unchanged (was not blue)
+    primary: '#32D74B',
+    primaryLight: '#5EE371',
+    primaryDark: '#28A745',
+    secondary: '#FF453A',
     border: '#444446',
     separator: '#3A3A3C',
     success: '#30D158',
     warning: '#FFD60A',
     danger: '#FF453A',
     shadow: 'rgba(0, 0, 0, 0.4)',
+
+    // darker subtle green overlay for unread cards
+    cardHighlight: '#1C2E1C',
 };
 
 export const colors = {

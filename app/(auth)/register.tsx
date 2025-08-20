@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     StyleSheet,
     View,
@@ -15,53 +15,64 @@ import {
     Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getThemeColors, Theme } from '@/theme/colors';
+import { useColorScheme } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { getThemeColors, Theme as AppTheme } from '@/theme/colors';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-
-const currentTheme: Theme = 'dark';
-const themeColors = getThemeColors(currentTheme);
 
 type UserRole = 'Arbeitnehmer' | 'Betrieb' | 'Rechnungsschreiber' | null;
 
-interface RoleOptionProps {
+const baseFontFamily = Platform.select({ ios: 'System', android: 'Roboto', default: 'System' });
+
+type RoleCardProps = {
     label: string;
-    icon: string;
+    icon: any;
     role: UserRole;
     selectedRole: UserRole;
-    onSelect: (role: UserRole) => void;
-}
+    onSelect: (r: UserRole) => void;
+    themeColors: ReturnType<typeof getThemeColors>;
+};
 
-const RoleOption: React.FC<RoleOptionProps> = ({ label, icon, role, selectedRole, onSelect }) => {
-    const isSelected = selectedRole === role;
+const RoleCard: React.FC<RoleCardProps> = ({ label, icon, role, selectedRole, onSelect, themeColors }) => {
+    const active = selectedRole === role;
     return (
         <TouchableOpacity
-            style={[
-                styles.roleButton,
-                isSelected && { borderColor: themeColors.primary, backgroundColor: themeColors.primary + '20' },
-            ]}
             onPress={() => onSelect(role)}
+            style={[
+                styles.roleCard,
+                { borderColor: themeColors.border, backgroundColor: themeColors.surfaceHighlight },
+                active && { borderColor: themeColors.primary, backgroundColor: themeColors.primary + '1A' },
+            ]}
+            activeOpacity={0.9}
         >
-            <MaterialCommunityIcons name={icon as any} size={24} color={isSelected ? themeColors.primary : themeColors.textSecondary} />
-            <Text style={[ styles.roleButtonText, isSelected && { color: themeColors.primary, fontWeight: 'bold' }, ]}>
+            <View style={[styles.roleIconWrap, { backgroundColor: active ? themeColors.primary + '26' : themeColors.surface }]}>
+                <MaterialCommunityIcons name={icon} size={22} color={active ? themeColors.primary : themeColors.textSecondary} />
+            </View>
+            <Text
+                style={[
+                    styles.roleLabel,
+                    { color: active ? themeColors.primary : themeColors.textSecondary },
+                    active && { fontWeight: '700' },
+                ]}
+                numberOfLines={2}
+            >
                 {label}
             </Text>
         </TouchableOpacity>
     );
 };
 
-const baseFontFamily = Platform.select({
-    ios: 'System',
-    android: 'Roboto',
-    default: 'System',
-});
+export default function RegisterScreen() {
+    const osScheme = useColorScheme();
+    const currentTheme: AppTheme = osScheme === 'dark' ? 'dark' : 'light';
+    const themeColors = useMemo(() => getThemeColors(currentTheme), [currentTheme]);
 
-const RegisterScreen = () => {
     const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [secure, setSecure] = useState(true);
     const [username, setUsername] = useState('');
     const [fullName, setFullName] = useState('');
     const [selectedRole, setSelectedRole] = useState<UserRole>(null);
@@ -77,13 +88,11 @@ const RegisterScreen = () => {
             setLoading(false);
             return;
         }
-
         if (selectedRole === 'Arbeitnehmer' && !username) {
             setError(t('register.errorUsername'));
             setLoading(false);
             return;
         }
-
         if (selectedRole !== 'Arbeitnehmer' && !fullName) {
             setError(t('register.errorFullName'));
             setLoading(false);
@@ -91,21 +100,16 @@ const RegisterScreen = () => {
         }
 
         try {
-            // --- MODIFICATION START ---
-            // Prepare the metadata to be passed to Supabase auth.signUp
             const userMetaData = {
                 role: selectedRole,
                 username: selectedRole === 'Arbeitnehmer' ? username : null,
                 full_name: selectedRole !== 'Arbeitnehmer' ? fullName : null,
-                // You can add more fields here if your trigger expects them
             };
 
             const { data: { user }, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
-                options: { // Use 'options' object for metadata in Supabase JS v2+
-                    data: userMetaData,
-                },
+                options: { data: userMetaData },
             });
 
             if (signUpError) {
@@ -114,89 +118,196 @@ const RegisterScreen = () => {
                 return;
             }
 
-            // --- REMOVED: Client-side profile insertion is no longer needed
-            // if (user) {
-            //     const { error: profileError } = await supabase.from('profiles').insert({
-            //         id: user.id,
-            //         role: selectedRole,
-            //         username: selectedRole === 'Arbeitnehmer' ? username : null,
-            //         full_name: selectedRole !== 'Arbeitnehmer' ? fullName : null,
-            //         email: user.email,
-            //     });
-
-            //     if (profileError) {
-            //         console.error("Error creating profile:", profileError);
-            //         setError("Could not save profile details.");
-            //     }
-            // }
-            // --- MODIFICATION END ---
-
-
-            // The trigger should have automatically created the profile by this point
-            Alert.alert(t('register.successTitle'), t('register.successMessage'));
-            router.replace('/(auth)/login');
+            if (user) {
+                Alert.alert(t('register.successTitle'), t('register.successMessage'));
+                router.replace('/(auth)/login');
+            }
         } catch (err: any) {
-            console.error('Signup error:', err);
-            setError(err.message || 'An unexpected error occurred during signup.');
+            setError(err.message || t('register.errorAllFields'));
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <LinearGradient colors={[themeColors.background, themeColors.surface]} style={styles.gradientBackground} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <LinearGradient
+            colors={currentTheme === 'dark' ? [themeColors.background, themeColors.surface] : [themeColors.surface, themeColors.background]}
+            style={styles.gradientBackground}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+        >
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                     <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                         <SafeAreaView style={styles.innerContainer}>
+                            {/* Header */}
                             <View style={styles.headerContainer}>
-                                <Text style={styles.title}>{t('register.title')}</Text>
-                                <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
+                                <View style={[styles.logoWrap, { backgroundColor: themeColors.primary + '26' }]}>
+                                    <MaterialCommunityIcons name="account-plus-outline" size={26} color={themeColors.primary} />
+                                </View>
+                                <Text style={[styles.title, { color: themeColors.text }]}>{t('register.title')}</Text>
+                                <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>{t('register.subtitle')}</Text>
                             </View>
 
-                            {error && <Text style={styles.errorText}>{error}</Text>}
+                            {/* Error */}
+                            {!!error && (
+                                <View style={[styles.errorBanner, { backgroundColor: themeColors.danger + '1A', borderColor: themeColors.danger }]}>
+                                    <MaterialCommunityIcons name="alert-octagon-outline" size={18} color={themeColors.danger} />
+                                    <Text style={[styles.errorText, { color: themeColors.danger }]}>{error}</Text>
+                                </View>
+                            )}
 
-                            <View style={styles.formContainer}>
-                                <Text style={styles.inputLabel}>{t('register.iAmA')}</Text>
-                                <View style={styles.roleSelectionContainer}>
-                                    <RoleOption label={t('register.roleEmployee')} icon="account" role="Arbeitnehmer" selectedRole={selectedRole} onSelect={setSelectedRole} />
-                                    <RoleOption label={t('register.roleFarm')} icon="tractor" role="Betrieb" selectedRole={selectedRole} onSelect={setSelectedRole} />
-                                    <RoleOption label={t('register.roleAccountant')} icon="file-document-outline" role="Rechnungsschreiber" selectedRole={selectedRole} onSelect={setSelectedRole} />
+                            {/* Card */}
+                            <View
+                                style={[
+                                    styles.card,
+                                    {
+                                        backgroundColor: themeColors.surface,
+                                        borderColor: themeColors.border,
+                                        shadowColor: themeColors.shadow,
+                                    },
+                                ]}
+                            >
+                                {/* Roles */}
+                                <Text style={[styles.sectionLabel, { color: themeColors.textSecondary }]}>{t('register.iAmA')}</Text>
+                                <View style={styles.roleRow}>
+                                    <RoleCard
+                                        label={t('register.roleEmployee')}
+                                        icon="account"
+                                        role="Arbeitnehmer"
+                                        selectedRole={selectedRole}
+                                        onSelect={setSelectedRole}
+                                        themeColors={themeColors}
+                                    />
+                                    <RoleCard
+                                        label={t('register.roleFarm')}
+                                        icon="tractor"
+                                        role="Betrieb"
+                                        selectedRole={selectedRole}
+                                        onSelect={setSelectedRole}
+                                        themeColors={themeColors}
+                                    />
+                                    <RoleCard
+                                        label={t('register.roleAccountant')}
+                                        icon="file-document-outline"
+                                        role="Rechnungsschreiber"
+                                        selectedRole={selectedRole}
+                                        onSelect={setSelectedRole}
+                                        themeColors={themeColors}
+                                    />
                                 </View>
 
+                                {/* Conditional fields */}
                                 {selectedRole === 'Arbeitnehmer' && (
                                     <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>{t('register.usernameLabel')}</Text>
-                                        <TextInput style={styles.input} placeholder={t('register.usernamePlaceholder')} placeholderTextColor={themeColors.textHint} autoCapitalize="none" value={username} onChangeText={setUsername} editable={!loading} />
+                                        <Text style={[styles.inputLabel, { color: themeColors.textSecondary }]}>{t('register.usernameLabel')}</Text>
+                                        <View style={[styles.inputShell, { backgroundColor: themeColors.surfaceHighlight, borderColor: themeColors.border }]}>
+                                            <MaterialCommunityIcons name="account-outline" size={20} color={themeColors.textSecondary} style={styles.leadingIcon} />
+                                            <TextInput
+                                                style={[styles.input, { color: themeColors.text }]}
+                                                placeholder={t('register.usernamePlaceholder')}
+                                                placeholderTextColor={themeColors.textHint}
+                                                autoCapitalize="none"
+                                                value={username}
+                                                onChangeText={setUsername}
+                                                editable={!loading}
+                                                returnKeyType="next"
+                                            />
+                                        </View>
                                     </View>
                                 )}
 
                                 {(selectedRole === 'Betrieb' || selectedRole === 'Rechnungsschreiber') && (
                                     <View style={styles.inputGroup}>
-                                        <Text style={styles.inputLabel}>{t('register.fullNameLabel')}</Text>
-                                        <TextInput style={styles.input} placeholder={t('register.fullNamePlaceholder')} placeholderTextColor={themeColors.textHint} autoCapitalize="words" value={fullName} onChangeText={setFullName} editable={!loading} />
+                                        <Text style={[styles.inputLabel, { color: themeColors.textSecondary }]}>{t('register.fullNameLabel')}</Text>
+                                        <View style={[styles.inputShell, { backgroundColor: themeColors.surfaceHighlight, borderColor: themeColors.border }]}>
+                                            <MaterialCommunityIcons name="card-account-details-outline" size={20} color={themeColors.textSecondary} style={styles.leadingIcon} />
+                                            <TextInput
+                                                style={[styles.input, { color: themeColors.text }]}
+                                                placeholder={t('register.fullNamePlaceholder')}
+                                                placeholderTextColor={themeColors.textHint}
+                                                autoCapitalize="words"
+                                                value={fullName}
+                                                onChangeText={setFullName}
+                                                editable={!loading}
+                                                returnKeyType="next"
+                                            />
+                                        </View>
                                     </View>
                                 )}
 
+                                {/* Email */}
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>{t('register.emailLabel')}</Text>
-                                    <TextInput style={styles.input} placeholder={t('register.emailPlaceholder')} placeholderTextColor={themeColors.textHint} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} editable={!loading} />
+                                    <Text style={[styles.inputLabel, { color: themeColors.textSecondary }]}>{t('register.emailLabel')}</Text>
+                                    <View style={[styles.inputShell, { backgroundColor: themeColors.surfaceHighlight, borderColor: themeColors.border }]}>
+                                        <MaterialCommunityIcons name="email-outline" size={20} color={themeColors.textSecondary} style={styles.leadingIcon} />
+                                        <TextInput
+                                            style={[styles.input, { color: themeColors.text }]}
+                                            placeholder={t('register.emailPlaceholder')}
+                                            placeholderTextColor={themeColors.textHint}
+                                            keyboardType="email-address"
+                                            autoCapitalize="none"
+                                            value={email}
+                                            onChangeText={setEmail}
+                                            editable={!loading}
+                                            returnKeyType="next"
+                                            textContentType="username"
+                                        />
+                                    </View>
                                 </View>
 
+                                {/* Password */}
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>{t('register.passwordLabel')}</Text>
-                                    <TextInput style={styles.input} placeholder={t('register.passwordPlaceholder')} placeholderTextColor={themeColors.textHint} secureTextEntry value={password} onChangeText={setPassword} editable={!loading} />
+                                    <Text style={[styles.inputLabel, { color: themeColors.textSecondary }]}>{t('register.passwordLabel')}</Text>
+                                    <View style={[styles.inputShell, { backgroundColor: themeColors.surfaceHighlight, borderColor: themeColors.border }]}>
+                                        <MaterialCommunityIcons name="lock-outline" size={20} color={themeColors.textSecondary} style={styles.leadingIcon} />
+                                        <TextInput
+                                            style={[styles.input, { color: themeColors.text }]}
+                                            placeholder={t('register.passwordPlaceholder')}
+                                            placeholderTextColor={themeColors.textHint}
+                                            secureTextEntry={secure}
+                                            value={password}
+                                            onChangeText={setPassword}
+                                            editable={!loading}
+                                            returnKeyType="go"
+                                            textContentType="newPassword"
+                                        />
+                                        <TouchableOpacity onPress={() => setSecure((s) => !s)} style={styles.trailingIconBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                            <MaterialCommunityIcons
+                                                name={secure ? 'eye-off-outline' : 'eye-outline'}
+                                                size={20}
+                                                color={themeColors.textSecondary}
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
 
-                                <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp} disabled={loading}>
-                                    {loading ? <ActivityIndicator color={themeColors.background} /> : <Text style={styles.signUpButtonText}>{t('register.signUpButton')}</Text>}
+                                {/* CTA */}
+                                <TouchableOpacity
+                                    style={[
+                                        styles.primaryButton,
+                                        { backgroundColor: themeColors.primary, shadowColor: themeColors.primaryDark },
+                                    ]}
+                                    onPress={handleSignUp}
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <ActivityIndicator color={themeColors.background} />
+                                    ) : (
+                                        <Text style={[styles.primaryButtonText, { color: themeColors.background }]}>
+                                            {t('register.signUpButton')}
+                                        </Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
 
-                            <View style={styles.loginContainer}>
-                                <Text style={styles.loginText}>{t('register.alreadyHaveAccount')} </Text>
+                            {/* Footer */}
+                            <View style={styles.footerRow}>
+                                <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
+                                    {t('register.alreadyHaveAccount')}{' '}
+                                </Text>
                                 <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-                                    <Text style={styles.loginLink}>{t('register.logInLink')}</Text>
+                                    <Text style={[styles.footerLink, { color: themeColors.primary }]}>{t('register.logInLink')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </SafeAreaView>
@@ -205,29 +316,91 @@ const RegisterScreen = () => {
             </KeyboardAvoidingView>
         </LinearGradient>
     );
-};
+}
 
 const styles = StyleSheet.create({
-    gradientBackground: { flex: 1, },
-    container: { flex: 1, },
-    scrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 40, },
-    innerContainer: { width: '100%', alignItems: 'center', },
-    headerContainer: { marginBottom: 48, alignItems: 'center', },
-    title: { fontFamily: baseFontFamily, fontSize: 36, fontWeight: 'bold', color: themeColors.text, marginBottom: 8, },
-    subtitle: { fontFamily: baseFontFamily, fontSize: 18, color: themeColors.textSecondary, textAlign: 'center', lineHeight: 24, },
-    errorText: { fontFamily: baseFontFamily, fontSize: 14, color: themeColors.danger, marginBottom: 20, textAlign: 'center', backgroundColor: 'rgba(220, 53, 69, 0.1)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8, width: '100%', },
-    formContainer: { width: '100%', backgroundColor: themeColors.surface, borderRadius: 16, padding: 24, shadowColor: themeColors.border, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5, },
-    inputGroup: { width: '100%', marginBottom: 20, },
-    inputLabel: { fontFamily: baseFontFamily, fontSize: 15, color: themeColors.textSecondary, marginBottom: 8, fontWeight: '500', },
-    input: { fontFamily: baseFontFamily, width: '100%', padding: 16, borderRadius: 10, backgroundColor: themeColors.surfaceHighlight, color: themeColors.text, fontSize: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: themeColors.border, paddingHorizontal: 15, },
-    signUpButton: { width: '100%', padding: 18, borderRadius: 12, backgroundColor: themeColors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 25, marginBottom: 10, },
-    signUpButtonText: { fontFamily: baseFontFamily, color: themeColors.background, fontSize: 18, fontWeight: 'bold', },
-    loginContainer: { flexDirection: 'row', marginTop: 40, alignItems: 'center', justifyContent: 'center', width: '100%', },
-    loginText: { fontFamily: baseFontFamily, color: themeColors.textSecondary, fontSize: 15, },
-    loginLink: { fontFamily: baseFontFamily, color: themeColors.primary, fontSize: 15, fontWeight: 'bold', },
-    roleSelectionContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30, width: '100%', },
-    roleButton: { flex: 1, alignItems: 'center', paddingVertical: 15, paddingHorizontal: 10, borderRadius: 12, borderWidth: 2, borderColor: themeColors.border, backgroundColor: themeColors.surfaceHighlight, marginHorizontal: 4, },
-    roleButtonText: { fontFamily: baseFontFamily, fontSize: 13, marginTop: 8, color: themeColors.textSecondary, textAlign: 'center', },
-});
+    gradientBackground: { flex: 1 },
+    container: { flex: 1 },
+    scrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 32 },
+    innerContainer: { width: '100%', maxWidth: 560, alignItems: 'center' },
 
-export default RegisterScreen;
+    headerContainer: { alignItems: 'center', marginBottom: 18 },
+    logoWrap: { width: 52, height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    title: { fontFamily: baseFontFamily, fontSize: 30, fontWeight: '800', letterSpacing: 0.2 },
+    subtitle: { fontFamily: baseFontFamily, fontSize: 16, textAlign: 'center', lineHeight: 22, marginTop: 4 },
+
+    errorBanner: {
+        width: '100%',
+        maxWidth: 560,
+        borderRadius: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    errorText: { fontFamily: baseFontFamily, fontSize: 13, flexShrink: 1 },
+
+    card: {
+        width: '100%',
+        borderRadius: 16,
+        padding: 18,
+        borderWidth: StyleSheet.hairlineWidth,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+
+    sectionLabel: { fontFamily: baseFontFamily, fontSize: 14, marginBottom: 10, fontWeight: '700', letterSpacing: 0.2 },
+
+    roleRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
+    roleCard: {
+        flex: 1,
+        borderRadius: 14,
+        borderWidth: 2,
+        paddingVertical: 12,
+        paddingHorizontal: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    roleIconWrap: {
+        width: 40, height: 40, borderRadius: 12,
+        alignItems: 'center', justifyContent: 'center',
+        marginBottom: 8,
+    },
+    roleLabel: { fontFamily: baseFontFamily, fontSize: 12, textAlign: 'center' },
+
+    inputGroup: { width: '100%', marginBottom: 14 },
+    inputLabel: { fontFamily: baseFontFamily, fontSize: 13, marginBottom: 8, fontWeight: '700', letterSpacing: 0.2 },
+    inputShell: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 12,
+        borderWidth: StyleSheet.hairlineWidth,
+        paddingHorizontal: 10,
+    },
+    leadingIcon: { marginRight: 6 },
+    trailingIconBtn: { padding: 6, marginLeft: 4 },
+    input: { flex: 1, fontFamily: baseFontFamily, paddingVertical: 14, fontSize: 16 },
+
+    primaryButton: {
+        width: '100%',
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 6,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    primaryButtonText: { fontFamily: baseFontFamily, fontSize: 18, fontWeight: '800', letterSpacing: 0.3 },
+
+    footerRow: { flexDirection: 'row', marginTop: 26, alignItems: 'center', justifyContent: 'center' },
+    footerText: { fontFamily: baseFontFamily, fontSize: 15 },
+    footerLink: { fontFamily: baseFontFamily, fontSize: 15, fontWeight: '800' },
+});
