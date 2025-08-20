@@ -1,16 +1,24 @@
 import '../i18n';
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
 import { getThemeColors } from '@/theme/colors';
 import { SessionProvider, useSession } from '@/lib/SessionProvider';
 import { UnreadChatProvider } from '@/contexts/UnreadChatContext';
 import { savePushToken } from '@/lib/notifications';
-import * as Notifications from 'expo-notifications';
+// NOTE: Don't import expo-notifications at the top on web; we guard-load it below.
+// import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const themeColors = getThemeColors('dark');
+
+// Guarded import for expo-notifications (native only)
+let Notifications: typeof import('expo-notifications') | undefined;
+if (Platform.OS !== 'web') {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    Notifications = require('expo-notifications');
+}
 
 const InitialLayout = () => {
     const { session, isLoading } = useSession();
@@ -23,7 +31,8 @@ const InitialLayout = () => {
         const inAuthFlow = segments[0] === '(auth)';
 
         if (session && inAuthFlow) {
-            supabase.rpc('get_user_subscription_status', { user_id_input: session.user.id })
+            supabase
+                .rpc('get_user_subscription_status', { user_id_input: session.user.id })
                 .then(({ data: isSubscribed }) => {
                     if (isSubscribed) {
                         router.replace('/(tabs)');
@@ -37,25 +46,40 @@ const InitialLayout = () => {
     }, [session, isLoading, router]);
 
     useEffect(() => {
-        if (session?.user?.id) {
+        // Save push token only on native
+        if (session?.user?.id && Platform.OS !== 'web') {
             savePushToken(session.user.id);
         }
     }, [session]);
 
     useEffect(() => {
-        const subscription = Notifications.addNotificationResponseReceivedListener(response => {
-            const data = response.notification.request.content.data;
+        // Register notification response handler only on native
+        if (Platform.OS === 'web' || !Notifications) return;
 
-            // --- THIS IS THE FIX ---
-            if (data?.type === 'sos_job') {
-                // If it's an SOS job, go to the main job list
-                router.push('/(tabs)');
-            } else if (data?.chat_id) {
-                // If it's a chat notification, go to the chat
-                router.push({ pathname: '/(tabs)/chats/[id]', params: { id: data.chat_id as string } });
+        const subscription = Notifications.addNotificationResponseReceivedListener(
+            (response) => {
+                const data = response.notification.request.content.data as {
+                    type?: string;
+                    chat_id?: string;
+                };
+
+                // --- THIS IS THE FIX ---
+                if (data?.type === 'sos_job') {
+                    // If it's an SOS job, go to the main job list
+                    router.push('/(tabs)');
+                } else if (data?.chat_id) {
+                    // If it's a chat notification, go to the chat
+                    router.push({
+                        pathname: '/(tabs)/chats/[id]',
+                        params: { id: data.chat_id as string },
+                    });
+                }
             }
-        });
-        return () => subscription.remove();
+        );
+
+        return () => {
+            subscription.remove();
+        };
     }, [router]);
 
     if (isLoading) {
@@ -70,10 +94,10 @@ const InitialLayout = () => {
         <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="my-jobs" options={{ presentation: 'modal' }}/>
+            <Stack.Screen name="my-jobs" options={{ presentation: 'modal' }} />
         </Stack>
     );
-}
+};
 
 export default function RootLayout() {
     return (

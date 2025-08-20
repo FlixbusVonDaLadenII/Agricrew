@@ -16,9 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.agri-crew.agri-crew",
       "buildNumber": "21",
-      "entitlements": {
-        "aps-environment": "production"
-      },
+      "entitlements": { "aps-environment": "production" },
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "AgriCrew needs access to your photo library to allow you to select and upload your profile picture and other relevant images.",
         "NSCameraUsageDescription": "AgriCrew needs camera access to take new photos for your profile, job listings, or chat.",
@@ -35,19 +33,20 @@
       },
       "package": "com.agri_crew.agri_crew"
     },
-    "extra": {
-      "eas": {
-        "projectId": "41096993-00de-4595-960d-c5e6fe1c40f8"
-      }
+    "web": {
+      "favicon": "./assets/images/favicon.png",
+      "name": "Agri-Crew",
+      "shortName": "AgriCrew",
+      "bundler": "metro",
+      "output": "static"
     },
     "plugins": [
       "expo-router"
     ],
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/41096993-00de-4595-960d-c5e6fe1c40f8"
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": { "url": "https://u.expo.dev/41096993-00de-4595-960d-c5e6fe1c40f8" },
+    "extra": {
+      "eas": { "projectId": "41096993-00de-4595-960d-c5e6fe1c40f8" }
     }
   }
 }
