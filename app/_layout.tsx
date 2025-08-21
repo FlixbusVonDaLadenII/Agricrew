@@ -15,6 +15,7 @@ import { UnreadChatProvider } from "@/contexts/UnreadChatContext";
 import { savePushToken } from "@/lib/notifications";
 import { supabase } from "@/lib/supabase";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import Purchases from 'react-native-purchases';
 
 // Guarded import for expo-notifications (native only)
 let Notifications: typeof import("expo-notifications") | undefined;
@@ -34,6 +35,15 @@ const InitialLayout = () => {
         () => getThemeColors(scheme === "dark" ? "dark" : "light"),
         [scheme]
     );
+
+    // --- ADD THIS EFFECT TO CONFIGURE REVENUECAT ---
+    useEffect(() => {
+        if (Platform.OS === 'ios') {
+            Purchases.configure({ apiKey: 'appl_KQEquUSMgoyGgeLDqYxIULsNytC' });
+        } else if (Platform.OS === 'android') {
+            Purchases.configure({ apiKey: 'your_google_api_key' });
+        }
+    }, []);
 
     // Paint HTML/body on web so you never see white behind RN views
     useEffect(() => {
