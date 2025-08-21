@@ -1,0 +1,51 @@
+// Minimal wrapper for RevenueCat Web (Stripe)
+import {
+  configure,
+  setDebugLogsEnabled,
+  logIn,
+  logOut,
+  getOfferings,
+  purchasePackage,
+  restorePurchases,
+  getCustomerInfo,
+  type Package,
+  type Offerings,
+} from '@revenuecat/purchases-js';
+
+const API_KEY =
+  (typeof process !== 'undefined' && (process as any).env?.EXPO_PUBLIC_RC_WEB_API_KEY) ||
+  (typeof process !== 'undefined' && (process as any).env?.RC_WEB_API_KEY);
+
+export const ENTITLEMENT_ID = 'pro'; // <-- change if your entitlement id is different
+export const DEFAULT_OFFERING_ID = 'default'; // <-- or your custom offering id
+
+export async function rcInit(appUserId?: string) {
+  if (!API_KEY) throw new Error('Missing RevenueCat Web API key');
+  configure({ apiKey: API_KEY });
+  setDebugLogsEnabled?.(true);
+  if (appUserId) await logIn(appUserId);
+}
+
+export async function rcGetOfferings(): Promise<Offerings> {
+  return getOfferings();
+}
+
+// For custom UIs we’ll purchase a concrete package object
+export async function rcPurchase(pkg: Package) {
+  const result = await purchasePackage(pkg);
+  return result;
+}
+
+export async function rcRestore() {
+  return restorePurchases();
+}
+
+export async function rcHasEntitlement(): Promise<boolean> {
+  const info = await getCustomerInfo();
+  // @ts-ignore typings: entitlements.active is a map
+  return Boolean(info?.entitlements?.active?.[ENTITLEMENT_ID]);
+}
+
+export async function rcLogOut() {
+  await logOut();
+}
