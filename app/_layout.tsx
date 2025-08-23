@@ -15,7 +15,14 @@ import { UnreadChatProvider } from "@/contexts/UnreadChatContext";
 import { savePushToken } from "@/lib/notifications";
 import { supabase } from "@/lib/supabase";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import Purchases from 'react-native-purchases';
+
+// ---- RevenueCat (native only) ----
+// Do NOT import react-native-purchases on web (Expo Go web path uses purchases-js in your subscribe screen)
+let PurchasesNative: typeof import("react-native-purchases").default | null = null;
+if (Platform.OS !== "web") {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    PurchasesNative = require("react-native-purchases").default;
+}
 
 // Guarded import for expo-notifications (native only)
 let Notifications: typeof import("expo-notifications") | undefined;
@@ -23,6 +30,9 @@ if (Platform.OS !== "web") {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     Notifications = require("expo-notifications");
 }
+
+const IOS_RC_KEY = process.env.EXPO_PUBLIC_RC_IOS_KEY;
+const ANDROID_RC_KEY = process.env.EXPO_PUBLIC_RC_ANDROID_KEY;
 
 const InitialLayout = () => {
     const { session, isLoading } = useSession();
@@ -36,12 +46,28 @@ const InitialLayout = () => {
         [scheme]
     );
 
-    // --- ADD THIS EFFECT TO CONFIGURE REVENUECAT ---
+    // Configure RevenueCat (native builds only — NOT web / Expo Go web path)
     useEffect(() => {
-        if (Platform.OS === 'ios') {
-            Purchases.configure({ apiKey: 'appl_KQEquUSMgoyGgeLDqYxIULsNytC' });
-        } else if (Platform.OS === 'android') {
-            Purchases.configure({ apiKey: 'your_google_api_key' });
+        if (Platform.OS === "web" || !PurchasesNative) return;
+
+        const key =
+            Platform.OS === "ios" ? IOS_RC_KEY : Platform.OS === "android" ? ANDROID_RC_KEY : undefined;
+
+        if (!key) {
+            console.warn(
+                "[RevenueCat] Missing native API key. Set EXPO_PUBLIC_RC_IOS_KEY / EXPO_PUBLIC_RC_ANDROID_KEY."
+            );
+            return;
+        }
+
+        // Wrap to avoid crashing in environments where the native module isn't linked (e.g., Expo Go)
+        try {
+            PurchasesNative.configure({ apiKey: key });
+        } catch (e) {
+            console.warn(
+                "[RevenueCat] Native configure skipped (likely Expo Go). Use a dev build for native IAP.",
+                e
+            );
         }
     }, []);
 
@@ -105,12 +131,7 @@ const InitialLayout = () => {
 
     if (isLoading) {
         return (
-            <View
-                style={[
-                    styles.loading,
-                    { backgroundColor: themeColors.background },
-                ]}
-            >
+            <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
                 <ActivityIndicator size="large" color={themeColors.primary} />
             </View>
         );
@@ -120,11 +141,9 @@ const InitialLayout = () => {
         <Stack
             screenOptions={{
                 headerShown: false,
-                // ✅ Make status bar readable
                 statusBarStyle: scheme === "dark" ? "light" : "dark",
                 statusBarBackgroundColor: themeColors.background, // Android
                 statusBarTranslucent: false,
-                // Optional: match scene bg to avoid flashes on screen transitions
                 contentStyle: { backgroundColor: themeColors.background },
             }}
         >
